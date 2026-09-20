@@ -1,0 +1,147 @@
+========================================
+COPY-PASTE COMMANDS FOR GITHUB SETUP
+========================================
+
+INSTRUCTIONS:
+1. Open Command Prompt (cmd)
+2. Copy and paste each command ONE BY ONE
+3. Press Enter after each command
+4. REPLACE placeholders with your actual info
+
+========================================
+STEP 1: CONFIGURE GIT
+========================================
+
+git config --global user.name "Your Name"
+
+git config --global user.email "your.email@example.com"
+
+========================================
+STEP 2: NAVIGATE TO PROJECT
+========================================
+
+cd c:\Users\hp\internhub
+
+========================================
+STEP 3: INITIALIZE GIT (if needed)
+========================================
+
+git status
+
+If you see "fatal: not a git repository", run:
+git init
+git branch -M main
+
+========================================
+STEP 4: ADD GITHUB REMOTE
+========================================
+
+REPLACE "YOUR_USERNAME" with your actual GitHub username:
+
+git remote add origin https://github.com/YOUR_USERNAME/internhub.git
+
+Verify:
+git remote -v
+
+========================================
+STEP 5: COMMIT ALL FILES
+========================================
+
+git add .
+
+git commit -m "Initial commit: InternHub platform with RBAC, mentor system, and bug fixes"
+
+========================================
+STEP 6: PUSH MAIN BRANCH
+========================================
+
+git push -u origin main
+
+When prompted:
+- Username: YOUR_GITHUB_USERNAME
+- Password: YOUR_PERSONAL_ACCESS_TOKEN (not your password!)
+
+========================================
+STEP 7: CREATE AND PUSH DEVELOP BRANCH
+========================================
+
+git checkout -b develop
+
+git push -u origin develop
+
+========================================
+STEP 8: CREATE FEATURE BRANCHES
+========================================
+
+git checkout -b feature/rbac-implementation
+
+git push -u origin feature/rbac-implementation
+
+git checkout develop
+
+git checkout -b feature/mentor-assignment
+
+git push -u origin feature/mentor-assignment
+
+git checkout develop
+
+git checkout -b feature/advisor-management
+
+git push -u origin feature/advisor-management
+
+git checkout develop
+
+git checkout -b bugfix/application-fetch
+
+git push -u origin bugfix/application-fetch
+
+git checkout main
+
+========================================
+STEP 9: VERIFY ALL BRANCHES
+========================================
+
+git branch -a
+
+You should see:
+* main
+  develop
+  feature/rbac-implementation
+  feature/mentor-assignment
+  feature/advisor-management
+  bugfix/application-fetch
+  remotes/origin/main
+  remotes/origin/develop
+  remotes/origin/feature/rbac-implementation
+  remotes/origin/feature/mentor-assignment
+  remotes/origin/feature/advisor-management
+  remotes/origin/bugfix/application-fetch
+
+========================================
+DONE! 
+========================================
+
+Now go to: https://github.com/YOUR_USERNAME/internhub
+Click the branch dropdown to see all your branches!
+
+========================================
+IF YOU NEED TO FIX REMOTE URL:
+========================================
+
+git remote remove origin
+
+git remote add origin https://github.com/YOUR_USERNAME/internhub.git
+
+========================================
+GET PERSONAL ACCESS TOKEN:
+========================================
+
+1. Go to: https://github.com/settings/tokens
+2. Click "Generate new token (classic)"
+3. Name: InternHub Token
+4. Select scope: [✓] repo
+5. Click "Generate token"
+6. COPY THE TOKEN and save it somewhere safe
+7. Use this token as your password when pushing
+
+========================================
