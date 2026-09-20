@@ -48,7 +48,6 @@ export default function SignupPage() {
         >
           <option value="company">Company</option>
           <option value="university">University</option>
-          <option value="admin">Admin</option>
         </select>
         {showNameField && (
           <input

@@ -13,6 +13,23 @@ exports.register = async (req, res) => {
     return res.status(400).json({ message: "All fields are required" })
   }
 
+  // SECURITY: Prevent admin role creation via public signup
+  // Admin accounts must be created via secure script only
+  if (role === "admin") {
+    console.warn(`[SECURITY] Attempted admin signup blocked: ${email}`);
+    return res.status(403).json({ 
+      message: "Admin accounts cannot be created through public signup. Please contact system administrator." 
+    })
+  }
+
+  // Validate role
+  const allowedRoles = ["company", "university", "student"];
+  if (!allowedRoles.includes(role)) {
+    return res.status(400).json({ 
+      message: "Invalid role. Allowed roles: company, university, student" 
+    })
+  }
+
   // Require organization name for university and company roles
   if ((role === "university" || role === "company") && !organization_name?.trim()) {
     return res.status(400).json({ message: `${role === "university" ? "University" : "Company"} name is required` })

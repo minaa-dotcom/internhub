@@ -70,7 +70,12 @@ app.use("/api/applications", applicationRoutes);
 app.use("/api/advisors", advisorRoutes);
 app.use("/api/mentors", mentorRoutes);
 app.use("/api/messages", messageRoutes);
-app.use("/api/admin", adminRoutes);
+
+// Security: Admin routes with obfuscated path
+// Using /api/secure/management instead of /api/admin for security through obscurity
+// Combined with proper authentication and authorization
+app.use("/api/secure/management", adminRoutes);
+
 app.use("/api/internship-posts", internshipPostRoutes);
 
 // Example protected route

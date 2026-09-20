@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { AdminSidebar } from "../../../components/sidebar/AdminSidebar"
-import API_URL from "@/lib/api"
+import { ADMIN_ENDPOINTS, getAuthHeaders } from "@/lib/apiConfig"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { 
   Users, 
@@ -35,14 +35,43 @@ export default function AdminDashboard() {
 
   const fetchStats = async () => {
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('accessToken')
-      const response = await fetch(`${API_URL}/api/admin/stats`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+      const token = localStorage.getItem('token')
+      
+      if (!token) {
+        console.error('No authentication token found for stats')
+        return
+      }
+
+      console.log('Fetching admin stats from:', ADMIN_ENDPOINTS.STATS)
+
+      const response = await fetch(ADMIN_ENDPOINTS.STATS, {
+        headers: getAuthHeaders()
       })
 
-      if (!response.ok) throw new Error('Failed to fetch stats')
+      console.log('Response status:', response.status)
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }))
+        console.error('Error response:', errorData)
+        
+        if (response.status === 401) {
+          console.error('Unauthorized - token may be invalid')
+          alert('Your session may have expired. Please try logging out and logging in again.')
+          return
+        }
+        
+        if (response.status === 403) {
+          console.error('Forbidden - insufficient permissions')
+          alert('You do not have permission to view admin stats. Please ensure you are logged in as an admin user.')
+          return
+        }
+        
+        throw new Error(errorData.message || 'Failed to fetch stats')
+      }
       
       const data = await response.json()
+      console.log('Stats fetched successfully:', data)
+      
       setStats({
         totalUsers: parseInt(data.stats.total_users) || 0,
         companies: parseInt(data.stats.companies) || 0,
@@ -55,6 +84,7 @@ export default function AdminDashboard() {
       })
     } catch (error) {
       console.error('Error fetching stats:', error)
+      alert(`Failed to load admin stats: ${error.message || 'Please try again'}`)
     }
   }
 
