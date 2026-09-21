@@ -26,6 +26,68 @@ export default function AdminDashboard() {
     messages: 0,
     applications: 0
   })
+  const [activities, setActivities] = useState<any[]>([])
+  const [activitiesLoading, setActivitiesLoading] = useState(true)
+
+  useEffect(() => {
+    fetchStats()
+    fetchRecentActivities()
+    const interval = setInterval(() => {
+      fetchStats()
+      fetchRecentActivities()
+    }, 30000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const fetchRecentActivities = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        console.error('No authentication token found')
+        return
+      }
+
+      const response = await fetch(ADMIN_ENDPOINTS.ACTIVITIES, {
+        headers: getAuthHeaders()
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch activities')
+      }
+
+      const data = await response.json()
+      if (data.success) {
+        setActivities(data.activities)
+      }
+    } catch (error) {
+      console.error('Error fetching activities:', error)
+    } finally {
+      setActivitiesLoading(false)
+    }
+  }
+
+  const getActivityColor = (color: string) => {
+    const colors: Record<string, string> = {
+      green: 'bg-green-500',
+      blue: 'bg-blue-500',
+      yellow: 'bg-yellow-500',
+      purple: 'bg-purple-500',
+      indigo: 'bg-indigo-500',
+      red: 'bg-red-500'
+    }
+    return colors[color] || 'bg-gray-500'
+  }
+
+  const getTimeAgo = (timestamp: string) => {
+    const now = new Date()
+    const past = new Date(timestamp)
+    const diffInSeconds = Math.floor((now.getTime() - past.getTime()) / 1000)
+
+    if (diffInSeconds < 60) return 'Just now'
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`
+    return `${Math.floor(diffInSeconds / 86400)} days ago`
+  }
 
   useEffect(() => {
     fetchStats()
@@ -220,29 +282,37 @@ export default function AdminDashboard() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                <div className="flex items-start gap-3 p-3 bg-purple-50 rounded-lg">
-                  <div className="w-2 h-2 rounded-full bg-green-500 mt-2 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">New company registered</p>
-                    <p className="text-xs text-gray-600">TechCorp Inc. - 2 hours ago</p>
-                  </div>
+              {activitiesLoading ? (
+                <div className="space-y-3">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="flex items-start gap-3 p-3 bg-purple-50 rounded-lg animate-pulse">
+                      <div className="w-2 h-2 rounded-full bg-gray-300 mt-2" />
+                      <div className="flex-1">
+                        <div className="h-4 bg-gray-300 rounded w-3/4 mb-2" />
+                        <div className="h-3 bg-gray-200 rounded w-1/2" />
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <div className="flex items-start gap-3 p-3 bg-purple-50 rounded-lg">
-                  <div className="w-2 h-2 rounded-full bg-blue-500 mt-2 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">45 new student applications</p>
-                    <p className="text-xs text-gray-600">Various universities - Today</p>
-                  </div>
+              ) : activities.length > 0 ? (
+                <div className="space-y-3">
+                  {activities.slice(0, 5).map((activity, index) => (
+                    <div key={index} className="flex items-start gap-3 p-3 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors">
+                      <div className={`w-2 h-2 rounded-full ${getActivityColor(activity.color)} mt-2 flex-shrink-0`} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900">{activity.title}</p>
+                        <p className="text-xs text-gray-600">{activity.description}</p>
+                        <p className="text-xs text-gray-500 mt-1">{getTimeAgo(activity.timestamp)}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <div className="flex items-start gap-3 p-3 bg-purple-50 rounded-lg">
-                  <div className="w-2 h-2 rounded-full bg-yellow-500 mt-2 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">System maintenance scheduled</p>
-                    <p className="text-xs text-gray-600">Tomorrow at 2:00 AM</p>
-                  </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <Activity className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>No recent activities</p>
                 </div>
-              </div>
+              )}
             </CardContent>
           </Card>
 

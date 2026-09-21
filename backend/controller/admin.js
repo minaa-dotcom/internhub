@@ -6,15 +6,16 @@ const getAllUsers = async (req, res) => {
     const { page = 1, limit = 7, role, search } = req.query;
     const offset = (page - 1) * limit;
 
+    // Simple query without joins - just get user data
     let query = `
-      SELECT id, email, first_name, last_name, role, created_at, 
-             CASE 
-               WHEN role = 'student' THEN (SELECT university_name FROM students WHERE user_id = users.id)
-               WHEN role = 'company' THEN (SELECT company_name FROM companies WHERE user_id = users.id)
-               WHEN role = 'university' THEN (SELECT university_name FROM universities WHERE user_id = users.id)
-               ELSE NULL
-             END as organization
-      FROM users
+      SELECT 
+        u.id, 
+        u.email, 
+        u.role, 
+        u.status,
+        u.organization_name,
+        u.created_at
+      FROM users u
       WHERE 1=1
     `;
     
@@ -22,35 +23,35 @@ const getAllUsers = async (req, res) => {
     let paramCount = 1;
 
     if (role) {
-      query += ` AND role = $${paramCount}`;
+      query += ` AND u.role = $${paramCount}`;
       params.push(role);
       paramCount++;
     }
 
     if (search) {
-      query += ` AND (email ILIKE $${paramCount} OR first_name ILIKE $${paramCount} OR last_name ILIKE $${paramCount})`;
+      query += ` AND (u.email ILIKE $${paramCount} OR u.organization_name ILIKE $${paramCount})`;
       params.push(`%${search}%`);
       paramCount++;
     }
 
-    query += ` ORDER BY created_at DESC LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
+    query += ` ORDER BY u.created_at DESC LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
     params.push(limit, offset);
 
     const result = await db.query(query, params);
 
     // Get total count
-    let countQuery = `SELECT COUNT(*) FROM users WHERE 1=1`;
+    let countQuery = `SELECT COUNT(*) FROM users u WHERE 1=1`;
     const countParams = [];
     let countParamCount = 1;
 
     if (role) {
-      countQuery += ` AND role = $${countParamCount}`;
+      countQuery += ` AND u.role = $${countParamCount}`;
       countParams.push(role);
       countParamCount++;
     }
 
     if (search) {
-      countQuery += ` AND (email ILIKE $${countParamCount} OR first_name ILIKE $${countParamCount} OR last_name ILIKE $${countParamCount})`;
+      countQuery += ` AND (u.email ILIKE $${countParamCount} OR u.organization_name ILIKE $${countParamCount})`;
       countParams.push(`%${search}%`);
     }
 
@@ -169,6 +170,9 @@ const updateUserRole = async (req, res) => {
       });
     }
 
+    // Log activity
+    console.log(`[ADMIN ACTION] ${req.user.email} changed role of user ${userId} to ${role} at ${new Date().toISOString()}`);
+
     res.status(200).json({
       success: true,
       message: "User role updated successfully",
@@ -179,6 +183,97 @@ const updateUserRole = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to update user role",
+      error: error.message
+    });
+  }
+};
+
+// Toggle user status (activate/deactivate)
+const toggleUserStatus = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { status } = req.body; // 'active' or 'suspended'
+
+    const validStatuses = ['active', 'suspended'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid status. Must be 'active' or 'suspended'"
+      });
+    }
+
+    // Check if user exists
+    const userCheck = await db.query("SELECT * FROM users WHERE id = $1", [userId]);
+    if (userCheck.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    // Update status
+    const result = await db.query(
+      "UPDATE users SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *",
+      [status, userId]
+    );
+
+    // Log activity
+    console.log(`[ADMIN ACTION] ${req.user.email} ${status === 'suspended' ? 'suspended' : 'activated'} user ${userId} at ${new Date().toISOString()}`);
+
+    res.status(200).json({
+      success: true,
+      message: `User ${status === 'suspended' ? 'suspended' : 'activated'} successfully`,
+      user: result.rows[0]
+    });
+  } catch (error) {
+    console.error("Error toggling user status:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update user status",
+      error: error.message
+    });
+  }
+};
+
+// Reset user password (generates temporary password)
+const resetUserPassword = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const bcrypt = require('bcrypt');
+
+    // Check if user exists
+    const userCheck = await db.query("SELECT * FROM users WHERE id = $1", [userId]);
+    if (userCheck.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    // Generate temporary password
+    const tempPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
+    const hashedPassword = await bcrypt.hash(tempPassword, 10);
+
+    // Update password
+    await db.query(
+      "UPDATE users SET password = $1, updated_at = NOW() WHERE id = $2",
+      [hashedPassword, userId]
+    );
+
+    // Log activity
+    console.log(`[ADMIN ACTION] ${req.user.email} reset password for user ${userId} at ${new Date().toISOString()}`);
+
+    res.status(200).json({
+      success: true,
+      message: "Password reset successfully",
+      tempPassword: tempPassword, // In production, send via email instead
+      note: "Please inform the user to change this password immediately"
+    });
+  } catch (error) {
+    console.error("Error resetting password:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to reset password",
       error: error.message
     });
   }
@@ -219,10 +314,124 @@ const getAllMessages = async (req, res) => {
   }
 };
 
+// Get recent activities
+const getRecentActivities = async (req, res) => {
+  try {
+    const limit = req.query.limit || 10;
+    
+    const activities = [];
+
+    // Get recent user registrations
+    const recentUsers = await db.query(`
+      SELECT 
+        u.id, 
+        u.email, 
+        u.role, 
+        u.created_at,
+        CASE 
+          WHEN u.role = 'student' THEN (SELECT university_name FROM students WHERE user_id = u.id)
+          WHEN u.role = 'company' THEN (SELECT company_name FROM companies WHERE user_id = u.id)
+          WHEN u.role = 'university' THEN (SELECT university_name FROM universities WHERE user_id = u.id)
+          ELSE NULL
+        END as organization_name
+      FROM users u
+      WHERE u.created_at >= NOW() - INTERVAL '7 days'
+      ORDER BY u.created_at DESC
+      LIMIT 5
+    `);
+
+    recentUsers.rows.forEach(user => {
+      const orgName = user.organization_name || user.email.split('@')[0];
+      activities.push({
+        type: 'user_registration',
+        icon: user.role === 'company' ? 'building' : user.role === 'university' ? 'university' : 'user',
+        color: user.role === 'company' ? 'green' : user.role === 'university' ? 'blue' : 'purple',
+        title: `New ${user.role} registered`,
+        description: orgName,
+        timestamp: user.created_at
+      });
+    });
+
+    // Get recent applications
+    const recentApplications = await db.query(`
+      SELECT 
+        ua.id,
+        ua.created_at,
+        ua.status,
+        s.university_name as student_university,
+        c.company_name
+      FROM universityapplications ua
+      LEFT JOIN students s ON ua.student_id = s.id
+      LEFT JOIN companies c ON ua.company_id = c.id
+      WHERE ua.created_at >= NOW() - INTERVAL '7 days'
+      ORDER BY ua.created_at DESC
+      LIMIT 5
+    `);
+
+    recentApplications.rows.forEach(app => {
+      activities.push({
+        type: 'application',
+        icon: 'file',
+        color: 'yellow',
+        title: 'New internship application',
+        description: `${app.student_university || 'Student'} → ${app.company_name || 'Company'}`,
+        timestamp: app.created_at
+      });
+    });
+
+    // Get recent mentor assignments
+    const recentMentors = await db.query(`
+      SELECT 
+        m.id,
+        m.created_at,
+        c.company_name,
+        COUNT(mi.id) as intern_count
+      FROM mentors m
+      LEFT JOIN companies c ON m.company_id = c.id
+      LEFT JOIN mentor_interns mi ON m.id = mi.mentor_id
+      WHERE m.created_at >= NOW() - INTERVAL '7 days'
+      GROUP BY m.id, m.created_at, c.company_name
+      ORDER BY m.created_at DESC
+      LIMIT 3
+    `);
+
+    recentMentors.rows.forEach(mentor => {
+      activities.push({
+        type: 'mentor_assignment',
+        icon: 'users',
+        color: 'indigo',
+        title: 'Mentor assigned interns',
+        description: `${mentor.company_name || 'Company'} - ${mentor.intern_count} intern(s)`,
+        timestamp: mentor.created_at
+      });
+    });
+
+    // Sort all activities by timestamp
+    activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    // Return limited activities
+    res.status(200).json({
+      success: true,
+      activities: activities.slice(0, parseInt(limit))
+    });
+
+  } catch (error) {
+    console.error("Error fetching recent activities:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch recent activities",
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getAllUsers,
   getDashboardStats,
   deleteUser,
   updateUserRole,
-  getAllMessages
+  toggleUserStatus,
+  resetUserPassword,
+  getAllMessages,
+  getRecentActivities
 };

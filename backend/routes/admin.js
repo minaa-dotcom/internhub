@@ -29,10 +29,15 @@ router.use((req, res, next) => {
 // Dashboard stats
 router.get("/stats", adminController.getDashboardStats);
 
+// Recent activities
+router.get("/activities", adminController.getRecentActivities);
+
 // User management
 router.get("/users", adminController.getAllUsers);
 router.delete("/users/:userId", adminController.deleteUser);
 router.put("/users/:userId/role", adminController.updateUserRole);
+router.put("/users/:userId/status", adminController.toggleUserStatus);
+router.post("/users/:userId/reset-password", adminController.resetUserPassword);
 
 // Messages
 router.get("/messages", adminController.getAllMessages);

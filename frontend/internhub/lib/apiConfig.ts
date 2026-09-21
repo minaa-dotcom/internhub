@@ -44,9 +44,12 @@ export const PROTECTED_ENDPOINTS = {
 // Combined with proper authentication and authorization on backend
 export const ADMIN_ENDPOINTS = {
   STATS: `${API_BASE_URL}/api/secure/management/stats`,
+  ACTIVITIES: `${API_BASE_URL}/api/secure/management/activities`,
   USERS: `${API_BASE_URL}/api/secure/management/users`,
   USER_BY_ID: (userId: string) => `${API_BASE_URL}/api/secure/management/users/${userId}`,
   UPDATE_USER_ROLE: (userId: string) => `${API_BASE_URL}/api/secure/management/users/${userId}/role`,
+  UPDATE_USER_STATUS: (userId: string) => `${API_BASE_URL}/api/secure/management/users/${userId}/status`,
+  RESET_PASSWORD: (userId: string) => `${API_BASE_URL}/api/secure/management/users/${userId}/reset-password`,
   DELETE_USER: (userId: string) => `${API_BASE_URL}/api/secure/management/users/${userId}`,
   MESSAGES: `${API_BASE_URL}/api/secure/management/messages`,
 };
