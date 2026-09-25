@@ -39,6 +39,12 @@ router.put("/users/:userId/role", adminController.updateUserRole);
 router.put("/users/:userId/status", adminController.toggleUserStatus);
 router.post("/users/:userId/reset-password", adminController.resetUserPassword);
 
+// University management
+router.get("/universities", adminController.getAllUniversities);
+
+// Company management
+router.get("/companies", adminController.getAllCompanies);
+
 // Messages
 router.get("/messages", adminController.getAllMessages);
 

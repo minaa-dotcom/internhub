@@ -321,23 +321,18 @@ const getRecentActivities = async (req, res) => {
     
     const activities = [];
 
-    // Get recent user registrations
+    // Get recent user registrations - simplified query
     const recentUsers = await db.query(`
       SELECT 
         u.id, 
         u.email, 
         u.role, 
-        u.created_at,
-        CASE 
-          WHEN u.role = 'student' THEN (SELECT university_name FROM students WHERE user_id = u.id)
-          WHEN u.role = 'company' THEN (SELECT company_name FROM companies WHERE user_id = u.id)
-          WHEN u.role = 'university' THEN (SELECT university_name FROM universities WHERE user_id = u.id)
-          ELSE NULL
-        END as organization_name
+        u.organization_name,
+        u.created_at
       FROM users u
       WHERE u.created_at >= NOW() - INTERVAL '7 days'
       ORDER BY u.created_at DESC
-      LIMIT 5
+      LIMIT 10
     `);
 
     recentUsers.rows.forEach(user => {
@@ -352,59 +347,58 @@ const getRecentActivities = async (req, res) => {
       });
     });
 
-    // Get recent applications
-    const recentApplications = await db.query(`
-      SELECT 
-        ua.id,
-        ua.created_at,
-        ua.status,
-        s.university_name as student_university,
-        c.company_name
-      FROM universityapplications ua
-      LEFT JOIN students s ON ua.student_id = s.id
-      LEFT JOIN companies c ON ua.company_id = c.id
-      WHERE ua.created_at >= NOW() - INTERVAL '7 days'
-      ORDER BY ua.created_at DESC
-      LIMIT 5
-    `);
+    // Try to get applications if table exists
+    try {
+      const recentApplications = await db.query(`
+        SELECT 
+          ua.id,
+          ua.created_at,
+          ua.status
+        FROM universityapplications ua
+        WHERE ua.created_at >= NOW() - INTERVAL '7 days'
+        ORDER BY ua.created_at DESC
+        LIMIT 5
+      `);
 
-    recentApplications.rows.forEach(app => {
-      activities.push({
-        type: 'application',
-        icon: 'file',
-        color: 'yellow',
-        title: 'New internship application',
-        description: `${app.student_university || 'Student'} → ${app.company_name || 'Company'}`,
-        timestamp: app.created_at
+      recentApplications.rows.forEach(app => {
+        activities.push({
+          type: 'application',
+          icon: 'file',
+          color: 'yellow',
+          title: 'New internship application',
+          description: `Application submitted`,
+          timestamp: app.created_at
+        });
       });
-    });
+    } catch (appError) {
+      console.log('Applications table not available:', appError.message);
+    }
 
-    // Get recent mentor assignments
-    const recentMentors = await db.query(`
-      SELECT 
-        m.id,
-        m.created_at,
-        c.company_name,
-        COUNT(mi.id) as intern_count
-      FROM mentors m
-      LEFT JOIN companies c ON m.company_id = c.id
-      LEFT JOIN mentor_interns mi ON m.id = mi.mentor_id
-      WHERE m.created_at >= NOW() - INTERVAL '7 days'
-      GROUP BY m.id, m.created_at, c.company_name
-      ORDER BY m.created_at DESC
-      LIMIT 3
-    `);
+    // Try to get mentor assignments if table exists
+    try {
+      const recentMentors = await db.query(`
+        SELECT 
+          m.id,
+          m.created_at
+        FROM mentors m
+        WHERE m.created_at >= NOW() - INTERVAL '7 days'
+        ORDER BY m.created_at DESC
+        LIMIT 3
+      `);
 
-    recentMentors.rows.forEach(mentor => {
-      activities.push({
-        type: 'mentor_assignment',
-        icon: 'users',
-        color: 'indigo',
-        title: 'Mentor assigned interns',
-        description: `${mentor.company_name || 'Company'} - ${mentor.intern_count} intern(s)`,
-        timestamp: mentor.created_at
+      recentMentors.rows.forEach(mentor => {
+        activities.push({
+          type: 'mentor_assignment',
+          icon: 'users',
+          color: 'indigo',
+          title: 'Mentor assigned',
+          description: `New mentor assignment`,
+          timestamp: mentor.created_at
+        });
       });
-    });
+    } catch (mentorError) {
+      console.log('Mentors table not available:', mentorError.message);
+    }
 
     // Sort all activities by timestamp
     activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
@@ -433,5 +427,168 @@ module.exports = {
   toggleUserStatus,
   resetUserPassword,
   getAllMessages,
-  getRecentActivities
+  getRecentActivities,
+  // University management
+  getAllUniversities: async (req, res) => {
+    try {
+      const { page = 1, limit = 10, status, search } = req.query;
+      const offset = (page - 1) * limit;
+
+      let query = `
+        SELECT 
+          u.id, 
+          u.email, 
+          u.organization_name,
+          u.status,
+          u.created_at,
+          (SELECT COUNT(*) FROM universityapplications WHERE university_id = u.id) as applications_count
+        FROM users u
+        WHERE u.role = 'university'
+      `;
+      
+      const params = [];
+      let paramCount = 1;
+
+      if (status) {
+        query += ` AND u.status = $${paramCount}`;
+        params.push(status);
+        paramCount++;
+      }
+
+      if (search) {
+        query += ` AND (u.email ILIKE $${paramCount} OR u.organization_name ILIKE $${paramCount})`;
+        params.push(`%${search}%`);
+        paramCount++;
+      }
+
+      query += ` ORDER BY u.created_at DESC LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
+      params.push(limit, offset);
+
+      const result = await db.query(query, params);
+
+      // Get total count
+      let countQuery = `SELECT COUNT(*) FROM users u WHERE u.role = 'university'`;
+      const countParams = [];
+      let countParamCount = 1;
+
+      if (status) {
+        countQuery += ` AND u.status = $${countParamCount}`;
+        countParams.push(status);
+        countParamCount++;
+      }
+
+      if (search) {
+        countQuery += ` AND (u.email ILIKE $${countParamCount} OR u.organization_name ILIKE $${countParamCount})`;
+        countParams.push(`%${search}%`);
+      }
+
+      const countResult = await db.query(countQuery, countParams);
+      const total = parseInt(countResult.rows[0].count);
+
+      // Log activity
+      console.log(`[ADMIN ACTION] ${req.user.email} accessed universities list at ${new Date().toISOString()}`);
+
+      res.status(200).json({
+        success: true,
+        universities: result.rows,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total,
+          pages: Math.ceil(total / limit)
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching universities:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch universities",
+        error: error.message
+      });
+    }
+  },
+
+  // Company management
+  getAllCompanies: async (req, res) => {
+    try {
+      const { page = 1, limit = 10, status, search } = req.query;
+      const offset = (page - 1) * limit;
+
+      let query = `
+        SELECT 
+          u.id, 
+          u.email, 
+          u.organization_name,
+          u.status,
+          u.created_at,
+          COALESCE((SELECT COUNT(*) FROM internship_posts WHERE company_id = u.id), 0) as internship_posts_count,
+          COALESCE((SELECT COUNT(*) FROM internship_posts WHERE company_id = u.id AND status = 'open'), 0) as active_posts_count,
+          COALESCE((SELECT COUNT(*) FROM mentors WHERE company_id = u.id), 0) as mentors_count,
+          COALESCE((SELECT COUNT(*) FROM companyapplications WHERE company_id = u.id), 0) as applications_count,
+          COALESCE((SELECT COUNT(*) FROM companyapplications WHERE company_id = u.id AND status = 'pending'), 0) as pending_applications
+        FROM users u
+        WHERE u.role = 'company'
+      `;
+      
+      const params = [];
+      let paramCount = 1;
+
+      if (status) {
+        query += ` AND u.status = $${paramCount}`;
+        params.push(status);
+        paramCount++;
+      }
+
+      if (search) {
+        query += ` AND (u.email ILIKE $${paramCount} OR u.organization_name ILIKE $${paramCount})`;
+        params.push(`%${search}%`);
+        paramCount++;
+      }
+
+      query += ` ORDER BY u.created_at DESC LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
+      params.push(limit, offset);
+
+      const result = await db.query(query, params);
+
+      // Get total count
+      let countQuery = `SELECT COUNT(*) FROM users u WHERE u.role = 'company'`;
+      const countParams = [];
+      let countParamCount = 1;
+
+      if (status) {
+        countQuery += ` AND u.status = $${countParamCount}`;
+        countParams.push(status);
+        countParamCount++;
+      }
+
+      if (search) {
+        countQuery += ` AND (u.email ILIKE $${countParamCount} OR u.organization_name ILIKE $${countParamCount})`;
+        countParams.push(`%${search}%`);
+      }
+
+      const countResult = await db.query(countQuery, countParams);
+      const total = parseInt(countResult.rows[0].count);
+
+      // Log activity
+      console.log(`[ADMIN ACTION] ${req.user.email} accessed companies list at ${new Date().toISOString()}`);
+
+      res.status(200).json({
+        success: true,
+        companies: result.rows,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total,
+          pages: Math.ceil(total / limit)
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching companies:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch companies",
+        error: error.message
+      });
+    }
+  }
 };

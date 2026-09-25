@@ -51,6 +51,8 @@ export const ADMIN_ENDPOINTS = {
   UPDATE_USER_STATUS: (userId: string) => `${API_BASE_URL}/api/secure/management/users/${userId}/status`,
   RESET_PASSWORD: (userId: string) => `${API_BASE_URL}/api/secure/management/users/${userId}/reset-password`,
   DELETE_USER: (userId: string) => `${API_BASE_URL}/api/secure/management/users/${userId}`,
+  UNIVERSITIES: `${API_BASE_URL}/api/secure/management/universities`,
+  COMPANIES: `${API_BASE_URL}/api/secure/management/companies`,
   MESSAGES: `${API_BASE_URL}/api/secure/management/messages`,
 };
 
