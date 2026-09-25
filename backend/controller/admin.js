@@ -90,18 +90,13 @@ const getDashboardStats = async (req, res) => {
         (SELECT COUNT(*) FROM users WHERE role = 'student') as students,
         (SELECT COUNT(*) FROM mentors) as mentors,
         (SELECT COUNT(*) FROM advisors) as advisors,
-        (SELECT COUNT(*) FROM universityapplications) as applications
+        (SELECT COUNT(*) FROM universityapplications) as applications,
+        (SELECT COUNT(*) FROM messages) as messages
     `);
-
-    // Note: messages table removed from query as it doesn't exist in schema
-    // You can add it back when messages feature is implemented
 
     res.status(200).json({
       success: true,
-      stats: {
-        ...stats.rows[0],
-        messages: 0 // Default to 0 until messages table is created
-      }
+      stats: stats.rows[0]
     });
   } catch (error) {
     console.error("Error fetching stats:", error);
@@ -282,17 +277,90 @@ const resetUserPassword = async (req, res) => {
 // Get all messages (admin view)
 const getAllMessages = async (req, res) => {
   try {
-    const { page = 1, limit = 7 } = req.query;
+    const { page = 1, limit = 10, status, search, role_filter } = req.query;
     const offset = (page - 1) * limit;
 
-    const result = await db.query(`
-      SELECT * FROM messages 
-      ORDER BY created_at DESC 
-      LIMIT $1 OFFSET $2
-    `, [limit, offset]);
+    let query = `
+      SELECT 
+        m.*,
+        CASE 
+          WHEN m.is_read = TRUE THEN 'read'
+          ELSE 'unread'
+        END as read_status
+      FROM messages m
+      WHERE 1=1
+    `;
 
-    const countResult = await db.query("SELECT COUNT(*) FROM messages");
+    const params = [];
+    let paramCount = 1;
+
+    // Filter by read status
+    if (status === 'unread') {
+      query += ` AND m.is_read = FALSE`;
+    } else if (status === 'read') {
+      query += ` AND m.is_read = TRUE`;
+    }
+
+    // Filter by role
+    if (role_filter) {
+      query += ` AND (m.sender_role = $${paramCount} OR m.receiver_role = $${paramCount})`;
+      params.push(role_filter);
+      paramCount++;
+    }
+
+    // Search by subject, message, or user names/emails
+    if (search) {
+      query += ` AND (
+        m.subject ILIKE $${paramCount} OR 
+        m.message ILIKE $${paramCount} OR 
+        m.sender_name ILIKE $${paramCount} OR 
+        m.sender_email ILIKE $${paramCount} OR 
+        m.receiver_name ILIKE $${paramCount} OR 
+        m.receiver_email ILIKE $${paramCount}
+      )`;
+      params.push(`%${search}%`);
+      paramCount++;
+    }
+
+    query += ` ORDER BY m.created_at DESC LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
+    params.push(limit, offset);
+
+    const result = await db.query(query, params);
+
+    // Get total count
+    let countQuery = `SELECT COUNT(*) FROM messages m WHERE 1=1`;
+    const countParams = [];
+    let countParamCount = 1;
+
+    if (status === 'unread') {
+      countQuery += ` AND m.is_read = FALSE`;
+    } else if (status === 'read') {
+      countQuery += ` AND m.is_read = TRUE`;
+    }
+
+    if (role_filter) {
+      countQuery += ` AND (m.sender_role = $${countParamCount} OR m.receiver_role = $${countParamCount})`;
+      countParams.push(role_filter);
+      countParamCount++;
+    }
+
+    if (search) {
+      countQuery += ` AND (
+        m.subject ILIKE $${countParamCount} OR 
+        m.message ILIKE $${countParamCount} OR 
+        m.sender_name ILIKE $${countParamCount} OR 
+        m.sender_email ILIKE $${countParamCount} OR 
+        m.receiver_name ILIKE $${countParamCount} OR 
+        m.receiver_email ILIKE $${countParamCount}
+      )`;
+      countParams.push(`%${search}%`);
+    }
+
+    const countResult = await db.query(countQuery, countParams);
     const total = parseInt(countResult.rows[0].count);
+
+    // Log admin action
+    console.log(`[ADMIN ACTION] ${req.user.email} accessed messages list at ${new Date().toISOString()}`);
 
     res.status(200).json({
       success: true,
@@ -309,6 +377,100 @@ const getAllMessages = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to fetch messages",
+      error: error.message
+    });
+  }
+};
+
+// Get message statistics
+const getMessageStats = async (req, res) => {
+  try {
+    const stats = await db.query(`
+      SELECT 
+        COUNT(*) as total_messages,
+        COUNT(*) FILTER (WHERE is_read = FALSE) as unread_messages,
+        COUNT(*) FILTER (WHERE is_read = TRUE) as read_messages,
+        COUNT(DISTINCT sender_id) as unique_senders,
+        COUNT(DISTINCT receiver_id) as unique_receivers,
+        COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '24 hours') as last_24h,
+        COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days') as last_7days,
+        COUNT(*) FILTER (WHERE sender_role = 'company') as from_companies,
+        COUNT(*) FILTER (WHERE sender_role = 'university') as from_universities,
+        COUNT(*) FILTER (WHERE sender_role = 'student') as from_students
+      FROM messages
+    `);
+
+    res.status(200).json({
+      success: true,
+      stats: stats.rows[0]
+    });
+  } catch (error) {
+    console.error("Error fetching message stats:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch message statistics",
+      error: error.message
+    });
+  }
+};
+
+// Delete message (admin)
+const deleteMessageAdmin = async (req, res) => {
+  try {
+    const { messageId } = req.params;
+
+    // Check if message exists
+    const messageCheck = await db.query("SELECT * FROM messages WHERE id = $1", [messageId]);
+    if (messageCheck.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Message not found"
+      });
+    }
+
+    // Delete message
+    await db.query("DELETE FROM messages WHERE id = $1", [messageId]);
+
+    // Log action
+    console.log(`[ADMIN ACTION] ${req.user.email} deleted message ${messageId} at ${new Date().toISOString()}`);
+
+    res.status(200).json({
+      success: true,
+      message: "Message deleted successfully"
+    });
+  } catch (error) {
+    console.error("Error deleting message:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete message",
+      error: error.message
+    });
+  }
+};
+
+// Get conversation between two users (admin view)
+const getConversationAdmin = async (req, res) => {
+  try {
+    const { user1Id, user2Id } = req.params;
+
+    const messages = await db.query(`
+      SELECT *
+      FROM messages
+      WHERE 
+        (sender_id = $1 AND receiver_id = $2) OR
+        (sender_id = $2 AND receiver_id = $1)
+      ORDER BY created_at ASC
+    `, [user1Id, user2Id]);
+
+    res.status(200).json({
+      success: true,
+      messages: messages.rows
+    });
+  } catch (error) {
+    console.error("Error fetching conversation:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch conversation",
       error: error.message
     });
   }
@@ -427,6 +589,9 @@ module.exports = {
   toggleUserStatus,
   resetUserPassword,
   getAllMessages,
+  getMessageStats,
+  deleteMessageAdmin,
+  getConversationAdmin,
   getRecentActivities,
   // University management
   getAllUniversities: async (req, res) => {

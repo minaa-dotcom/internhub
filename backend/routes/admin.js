@@ -45,7 +45,10 @@ router.get("/universities", adminController.getAllUniversities);
 // Company management
 router.get("/companies", adminController.getAllCompanies);
 
-// Messages
+// Messages management
 router.get("/messages", adminController.getAllMessages);
+router.get("/messages/stats", adminController.getMessageStats);
+router.delete("/messages/:messageId", adminController.deleteMessageAdmin);
+router.get("/messages/conversation/:user1Id/:user2Id", adminController.getConversationAdmin);
 
 module.exports = router;

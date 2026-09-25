@@ -54,6 +54,9 @@ export const ADMIN_ENDPOINTS = {
   UNIVERSITIES: `${API_BASE_URL}/api/secure/management/universities`,
   COMPANIES: `${API_BASE_URL}/api/secure/management/companies`,
   MESSAGES: `${API_BASE_URL}/api/secure/management/messages`,
+  MESSAGE_STATS: `${API_BASE_URL}/api/secure/management/messages/stats`,
+  DELETE_MESSAGE: (messageId: string) => `${API_BASE_URL}/api/secure/management/messages/${messageId}`,
+  CONVERSATION: (user1Id: string, user2Id: string) => `${API_BASE_URL}/api/secure/management/messages/conversation/${user1Id}/${user2Id}`,
 };
 
 // Helper function to build API URLs
