@@ -17,6 +17,7 @@ const initAllTables = async () => {
     await initAdvisorTables(client);
     await initMentorTables(client);
     await initInternshipPostsTable(client);
+    await initMessagesTable(client);
 
     await client.query("COMMIT");
 
@@ -447,6 +448,48 @@ const initInternshipPostsTable = async (client) => {
   `);
 
   console.log(" Internship posts table ready");
+};
+
+const initMessagesTable = async (client) => {
+  console.log("Creating messages table...");
+
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS public.messages (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      sender_id UUID NOT NULL,
+      sender_email VARCHAR(255) NOT NULL,
+      sender_name VARCHAR(255) NOT NULL,
+      sender_role VARCHAR(50) NOT NULL,
+      receiver_id UUID NOT NULL,
+      receiver_email VARCHAR(255) NOT NULL,
+      receiver_name VARCHAR(255) NOT NULL,
+      receiver_role VARCHAR(50) NOT NULL,
+      subject VARCHAR(500),
+      message TEXT NOT NULL,
+      is_read BOOLEAN DEFAULT FALSE,
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Create indexes for better query performance
+  await client.query(`
+    CREATE INDEX IF NOT EXISTS idx_messages_sender ON public.messages(sender_id);
+    CREATE INDEX IF NOT EXISTS idx_messages_receiver ON public.messages(receiver_id);
+    CREATE INDEX IF NOT EXISTS idx_messages_created ON public.messages(created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_messages_is_read ON public.messages(is_read);
+  `);
+
+  // Trigger for updated_at
+  await client.query(`
+    DROP TRIGGER IF EXISTS update_messages_updated_at ON public.messages;
+    CREATE TRIGGER update_messages_updated_at
+      BEFORE UPDATE ON public.messages
+      FOR EACH ROW
+      EXECUTE FUNCTION update_updated_at_column();
+  `);
+
+  console.log(" Messages table ready");
 };
 
 

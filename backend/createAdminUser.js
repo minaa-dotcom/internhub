@@ -1,4 +1,4 @@
-// Script to create an admin user
+// Script to create an admin user with strong password
 // Run: node createAdminUser.js
 
 require("dotenv").config();
@@ -6,15 +6,48 @@ const db = require("./config/dbConnection");
 const bcrypt = require("bcrypt");  // Changed from bcryptjs to bcrypt
 const { v4: uuidv4 } = require("uuid");
 
+// Generate a strong random password that meets requirements:
+// - Minimum 8 characters
+// - At least 1 uppercase letter
+// - At least 1 lowercase letter
+// - At least 1 number
+// - At least 1 special character
+function generateStrongPassword() {
+  const length = 12;
+  const uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const lowercase = "abcdefghijklmnopqrstuvwxyz";
+  const numbers = "0123456789";
+  const special = "!@#$%^&*";
+  
+  // Ensure at least one of each required character type
+  let password = "";
+  password += uppercase[Math.floor(Math.random() * uppercase.length)];
+  password += lowercase[Math.floor(Math.random() * lowercase.length)];
+  password += numbers[Math.floor(Math.random() * numbers.length)];
+  password += special[Math.floor(Math.random() * special.length)];
+  
+  // Fill the rest with random characters from all sets
+  const allChars = uppercase + lowercase + numbers + special;
+  for (let i = password.length; i < length; i++) {
+    password += allChars[Math.floor(Math.random() * allChars.length)];
+  }
+  
+  // Shuffle the password to avoid predictable pattern
+  return password.split('').sort(() => Math.random() - 0.5).join('');
+}
+
 async function createAdminUser() {
   try {
-    console.log("🔐 Creating Admin User...\n");
+    console.log("🔐 Creating Admin User with Strong Password...\n");
+
+    // Generate strong password
+    const strongPassword = generateStrongPassword();
 
     // Admin credentials
     const adminData = {
       id: uuidv4(),
       email: "admin@internhub.com",
-      password: "Admin@123456", // Change this after first login!
+      password: strongPassword, // Strong auto-generated password
       organization_name: "InternHub Admin",
       role: "admin"
     };
@@ -51,11 +84,18 @@ async function createAdminUser() {
 
     console.log("✅ Admin user created successfully!\n");
     console.log("📋 Admin Credentials:");
-    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    console.log(`📧 Email:    ${adminData.email}`);
-    console.log(`🔑 Password: ${adminData.password}`);
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    console.log(`📧 Email:        ${adminData.email}`);
+    console.log(`🔑 Password:     ${adminData.password}`);
     console.log(`🏢 Organization: ${adminData.organization_name}`);
-    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+    
+    console.log("✅ Password Requirements Met:");
+    console.log("  ✓ 12 characters (exceeds 8 minimum)");
+    console.log("  ✓ Contains uppercase letters (A-Z)");
+    console.log("  ✓ Contains lowercase letters (a-z)");
+    console.log("  ✓ Contains numbers (0-9)");
+    console.log("  ✓ Contains special characters (!@#$%^&*)\n");
     
     console.log("🌐 Access Admin Dashboard:");
     console.log("1. Go to: http://localhost:3000/auth/login");
@@ -64,11 +104,13 @@ async function createAdminUser() {
     console.log("4. You'll be redirected to: /dashboard/admin\n");
 
     console.log("⚠️  IMPORTANT SECURITY NOTES:");
-    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    console.log("1. Change the default password immediately after first login!");
-    console.log("2. Use a strong password (min 8 chars, uppercase, lowercase, number, special char)");
-    console.log("3. Never share admin credentials");
-    console.log("4. Enable 2FA if available\n");
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    console.log("1. ⚠️  SAVE THIS PASSWORD NOW! It won't be shown again!");
+    console.log("2. ✅ Password is strong and meets all validation requirements");
+    console.log("3. 🔒 Consider changing it after first login to something memorable");
+    console.log("4. 🚫 Never share admin credentials");
+    console.log("5. 📝 Store password securely (password manager recommended)");
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 
     process.exit(0);
   } catch (error) {

@@ -81,22 +81,68 @@ const getAllUsers = async (req, res) => {
 // Get dashboard stats
 const getDashboardStats = async (req, res) => {
   try {
-    // Query with error handling for tables that might not exist
-    const stats = await db.query(`
-      SELECT 
-        (SELECT COUNT(*) FROM users) as total_users,
-        (SELECT COUNT(*) FROM users WHERE role = 'company') as companies,
-        (SELECT COUNT(*) FROM users WHERE role = 'university') as universities,
-        (SELECT COUNT(*) FROM users WHERE role = 'student') as students,
-        (SELECT COUNT(*) FROM mentors) as mentors,
-        (SELECT COUNT(*) FROM advisors) as advisors,
-        (SELECT COUNT(*) FROM universityapplications) as applications,
-        (SELECT COUNT(*) FROM messages) as messages
-    `);
+    // Build stats object with safe queries
+    const statsResult = {
+      total_users: 0,
+      companies: 0,
+      universities: 0,
+      students: 0,
+      mentors: 0,
+      advisors: 0,
+      applications: 0,
+      messages: 0
+    };
+
+    // Query each table separately with error handling
+    try {
+      const usersResult = await db.query(`
+        SELECT 
+          COUNT(*) as total_users,
+          COUNT(*) FILTER (WHERE role = 'company') as companies,
+          COUNT(*) FILTER (WHERE role = 'university') as universities,
+          COUNT(*) FILTER (WHERE role = 'student') as students
+        FROM users
+      `);
+      Object.assign(statsResult, usersResult.rows[0]);
+    } catch (err) {
+      console.error('Error fetching user stats:', err.message);
+    }
+
+    // Mentors table
+    try {
+      const mentorsResult = await db.query('SELECT COUNT(*) as mentors FROM mentors');
+      statsResult.mentors = mentorsResult.rows[0].mentors;
+    } catch (err) {
+      console.log('Mentors table not available');
+    }
+
+    // Advisors table
+    try {
+      const advisorsResult = await db.query('SELECT COUNT(*) as advisors FROM advisors');
+      statsResult.advisors = advisorsResult.rows[0].advisors;
+    } catch (err) {
+      console.log('Advisors table not available');
+    }
+
+    // Applications table
+    try {
+      const applicationsResult = await db.query('SELECT COUNT(*) as applications FROM universityapplications');
+      statsResult.applications = applicationsResult.rows[0].applications;
+    } catch (err) {
+      console.log('Applications table not available');
+    }
+
+    // Messages table
+    try {
+      const messagesResult = await db.query('SELECT COUNT(*) as messages FROM messages');
+      statsResult.messages = messagesResult.rows[0].messages;
+    } catch (err) {
+      console.log('Messages table not available');
+    }
 
     res.status(200).json({
       success: true,
-      stats: stats.rows[0]
+      stats: statsResult
     });
   } catch (error) {
     console.error("Error fetching stats:", error);
