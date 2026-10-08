@@ -15,6 +15,12 @@ router.get("/:id", protect, advisorController.getAdvisorById);
 // Create new advisor
 router.post("/", protect, advisorController.createAdvisor);
 
+// Update advisor
+router.put("/:id", protect, restrictTo("university", "admin"), advisorController.updateAdvisor);
+
+// Delete advisor
+router.delete("/:id", protect, restrictTo("university", "admin"), advisorController.deleteAdvisor);
+
 // Get assigned students for an advisor
 router.get("/:advisorId/students", protect, advisorController.getAssignedStudents);
 

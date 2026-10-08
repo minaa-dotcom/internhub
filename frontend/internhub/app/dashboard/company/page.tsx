@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { CompanySidebar } from "../../../components/sidebar/CompanySidebar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Building2, FileText, CheckCircle, Clock, Users, Briefcase, TrendingUp, PlusCircle, MapPin, Timer, X } from "lucide-react"
+import { Building2, FileText, CheckCircle, Clock, Users, Briefcase, TrendingUp, PlusCircle, MapPin, Timer, X, Edit, Trash2 } from "lucide-react"
 import API_URL from "@/lib/api"
 import Link from "next/link"
 
@@ -28,11 +28,25 @@ export default function CompanyDashboard() {
   const [posts, setPosts] = useState<InternshipPost[]>([])
   const [stats, setStats] = useState({ total: 0, pending: 0, accepted: 0, rejected: 0 })
   const [selectedPost, setSelectedPost] = useState<InternshipPost | null>(null)
+  const [editingPost, setEditingPost] = useState<InternshipPost | null>(null)
   const [companyName, setCompanyName] = useState("")
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetchPosts()
-    fetchStats()
+    const loadData = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        await Promise.all([fetchPosts(), fetchStats()])
+      } catch (err: any) {
+        setError(err.message || 'Failed to load dashboard data')
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadData()
+    
     // Read company name from token
     const token = localStorage.getItem("token")
     if (token) {
@@ -72,15 +86,81 @@ export default function CompanyDashboard() {
   }
 
   const handleClose = async (id: string) => {
+    if (!confirm("Are you sure you want to close this internship position?")) return
+    
     try {
       const token = localStorage.getItem("token")
-      await fetch(`${API_URL}/api/internship-posts/${id}/close`, {
+      const response = await fetch(`${API_URL}/api/internship-posts/${id}/close`, {
         method: "PATCH",
         headers: { Authorization: `Bearer ${token}` }
       })
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.message || "Failed to close position")
+      }
+      
+      alert("Internship position closed successfully!")
       fetchPosts()
     } catch (err) {
       console.error("Failed to close post:", err)
+      alert(err instanceof Error ? err.message : "Failed to close position. Please check if the backend server is running.")
+    }
+  }
+
+  const handleEdit = (post: InternshipPost) => {
+    setEditingPost(post)
+  }
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to permanently delete this internship position? This action cannot be undone.")) return
+    
+    try {
+      const token = localStorage.getItem("token")
+      const response = await fetch(`${API_URL}/api/internship-posts/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.message || "Failed to delete position")
+      }
+      
+      alert("Internship position deleted successfully!")
+      fetchPosts()
+    } catch (err) {
+      console.error("Failed to delete post:", err)
+      alert(err instanceof Error ? err.message : "Failed to delete position.")
+    }
+  }
+
+  const handleUpdatePost = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingPost) return
+
+    try {
+      const token = localStorage.getItem("token")
+      const response = await fetch(`${API_URL}/api/internship-posts/${editingPost.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(editingPost)
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.message || "Failed to update position")
+      }
+
+      alert("Internship position updated successfully!")
+      setEditingPost(null)
+      fetchPosts()
+    } catch (err) {
+      console.error("Failed to update post:", err)
+      alert(err instanceof Error ? err.message : "Failed to update position.")
     }
   }
 
@@ -101,6 +181,70 @@ export default function CompanyDashboard() {
             <PlusCircle className="h-4 w-4" /> Post New Internship
           </Link>
         </div>
+
+        {/* Error State */}
+        {error && (
+          <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className="flex-1">
+                <h3 className="text-sm font-medium text-red-800">Error Loading Dashboard</h3>
+                <p className="text-sm text-red-700 mt-1">{error}</p>
+              </div>
+              <button
+                onClick={async () => {
+                  setError(null)
+                  setLoading(true)
+                  try {
+                    await Promise.all([fetchPosts(), fetchStats()])
+                  } catch (err: any) {
+                    setError(err.message)
+                  } finally {
+                    setLoading(false)
+                  }
+                }}
+                className="px-4 py-2 bg-red-100 hover:bg-red-200 text-red-800 rounded-lg text-sm font-medium"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Loading State */}
+        {loading ? (
+          <div>
+            {/* Stats Skeleton */}
+            <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4 mb-6">
+              {[1, 2, 3, 4].map((i) => (
+                <Card key={i} className="border-blue-200 animate-pulse">
+                  <CardHeader className="pb-2">
+                    <div className="h-4 bg-gray-200 rounded w-24" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-8 bg-gray-200 rounded w-16" />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+            {/* Posts Skeleton */}
+            <Card className="border-blue-200">
+              <CardHeader>
+                <div className="h-6 bg-gray-200 rounded w-48" />
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="border border-blue-100 rounded-lg p-4 animate-pulse">
+                      <div className="h-5 bg-gray-200 rounded w-3/4 mb-2" />
+                      <div className="h-4 bg-gray-200 rounded w-1/2" />
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        ) : (
+          <div className="space-y-6 lg:space-y-8">{/* Rest of content */}
 
         {/* Stats */}
         <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
@@ -177,14 +321,22 @@ export default function CompanyDashboard() {
                           {post.deadline && <span className="bg-orange-50 text-orange-700 px-2 py-0.5 rounded">Deadline: {new Date(post.deadline).toLocaleDateString()}</span>}
                         </div>
                       </div>
-                      <div className="flex items-start gap-2">
+                      <div className="flex items-start gap-2 flex-wrap">
                         <button onClick={() => setSelectedPost(post)}
-                          className="text-sm text-blue-600 hover:text-blue-800 border border-blue-200 px-3 py-1 rounded-lg hover:bg-blue-50">
+                          className="text-sm text-blue-600 hover:text-blue-800 border border-blue-200 px-3 py-1 rounded-lg hover:bg-blue-50 flex items-center gap-1">
                           View
                         </button>
+                        <button onClick={() => handleEdit(post)}
+                          className="text-sm text-green-600 hover:text-green-800 border border-green-200 px-3 py-1 rounded-lg hover:bg-green-50 flex items-center gap-1">
+                          <Edit className="h-3 w-3" /> Edit
+                        </button>
                         <button onClick={() => handleClose(post.id)}
-                          className="text-sm text-red-500 hover:text-red-700 border border-red-200 px-3 py-1 rounded-lg hover:bg-red-50">
+                          className="text-sm text-orange-500 hover:text-orange-700 border border-orange-200 px-3 py-1 rounded-lg hover:bg-orange-50">
                           Close
+                        </button>
+                        <button onClick={() => handleDelete(post.id)}
+                          className="text-sm text-red-500 hover:text-red-700 border border-red-200 px-3 py-1 rounded-lg hover:bg-red-50 flex items-center gap-1">
+                          <Trash2 className="h-3 w-3" /> Delete
                         </button>
                       </div>
                     </div>
@@ -212,7 +364,8 @@ export default function CompanyDashboard() {
             </a>
           </div>
         </div>
-
+          </div>
+        )}
       </main>
 
       {/* Post Detail Modal */}
@@ -258,6 +411,149 @@ export default function CompanyDashboard() {
               {selectedPost.deadline && (
                 <p className="text-sm text-orange-600">Application Deadline: {new Date(selectedPost.deadline).toLocaleDateString()}</p>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Post Modal */}
+      {editingPost && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-start mb-4">
+                <h2 className="text-xl font-bold text-blue-700">Edit Internship Position</h2>
+                <button onClick={() => setEditingPost(null)} className="text-gray-400 hover:text-gray-600">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <form onSubmit={handleUpdatePost} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
+                    <input
+                      type="text"
+                      required
+                      value={editingPost.title}
+                      onChange={(e) => setEditingPost({...editingPost, title: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
+                    <input
+                      type="text"
+                      value={editingPost.department}
+                      onChange={(e) => setEditingPost({...editingPost, department: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                    <input
+                      type="text"
+                      value={editingPost.location}
+                      onChange={(e) => setEditingPost({...editingPost, location: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Work Type</label>
+                    <select
+                      value={editingPost.work_type}
+                      onChange={(e) => setEditingPost({...editingPost, work_type: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="on-site">On-site</option>
+                      <option value="remote">Remote</option>
+                      <option value="hybrid">Hybrid</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Duration</label>
+                    <input
+                      type="text"
+                      value={editingPost.duration}
+                      onChange={(e) => setEditingPost({...editingPost, duration: e.target.value})}
+                      placeholder="e.g., 3 months"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Stipend</label>
+                    <input
+                      type="text"
+                      value={editingPost.stipend}
+                      onChange={(e) => setEditingPost({...editingPost, stipend: e.target.value})}
+                      placeholder="e.g., $1000/month"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Positions Available</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={editingPost.positions_available}
+                      onChange={(e) => setEditingPost({...editingPost, positions_available: parseInt(e.target.value)})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Deadline</label>
+                    <input
+                      type="date"
+                      value={editingPost.deadline ? editingPost.deadline.split('T')[0] : ''}
+                      onChange={(e) => setEditingPost({...editingPost, deadline: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Description *</label>
+                  <textarea
+                    required
+                    rows={4}
+                    value={editingPost.description}
+                    onChange={(e) => setEditingPost({...editingPost, description: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Requirements</label>
+                  <textarea
+                    rows={3}
+                    value={editingPost.requirements}
+                    onChange={(e) => setEditingPost({...editingPost, requirements: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Skills Required (comma-separated)</label>
+                  <input
+                    type="text"
+                    value={editingPost.skills_required}
+                    onChange={(e) => setEditingPost({...editingPost, skills_required: e.target.value})}
+                    placeholder="e.g., JavaScript, React, Node.js"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div className="flex gap-3 justify-end pt-4 border-t">
+                  <button
+                    type="button"
+                    onClick={() => setEditingPost(null)}
+                    className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
+                    Save Changes
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         </div>

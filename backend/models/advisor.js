@@ -324,11 +324,67 @@ const submitFeedback = async (assignmentId, feedback) => {
   return result.rows[0];
 };
 
+// Update advisor
+const updateAdvisor = async (advisorId, updateData) => {
+  const { first_name, last_name, email, department, phone } = updateData;
+  
+  const updates = [];
+  const values = [];
+  let paramCount = 1;
+
+  if (first_name !== undefined) {
+    updates.push(`first_name = $${paramCount++}`);
+    values.push(first_name);
+  }
+  if (last_name !== undefined) {
+    updates.push(`last_name = $${paramCount++}`);
+    values.push(last_name);
+  }
+  if (email !== undefined) {
+    updates.push(`email = $${paramCount++}`);
+    values.push(email);
+  }
+  if (department !== undefined) {
+    updates.push(`department = $${paramCount++}`);
+    values.push(department);
+  }
+  if (phone !== undefined) {
+    updates.push(`phone = $${paramCount++}`);
+    values.push(phone);
+  }
+
+  if (updates.length === 0) {
+    throw new Error("No fields to update");
+  }
+
+  updates.push(`updated_at = CURRENT_TIMESTAMP`);
+  values.push(advisorId);
+
+  const query = `
+    UPDATE public.advisors 
+    SET ${updates.join(', ')}
+    WHERE id = $${paramCount}
+    RETURNING *
+  `;
+
+  const result = await db.query(query, values);
+  return result.rows[0];
+};
+
+// Delete advisor
+const deleteAdvisor = async (advisorId) => {
+  const query = `DELETE FROM public.advisors WHERE id = $1 RETURNING *`;
+  const result = await db.query(query, [advisorId]);
+  return result.rows[0];
+};
+
 module.exports = {
   getAllAdvisors,
   getAdvisorById,
   getAdvisorByUserId,
   createAdvisor,
+  updateAdvisor,
+  deleteAdvisor,
   getAssignedStudents,
   assignStudent,
   updateStudentProgress,

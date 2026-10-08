@@ -257,3 +257,25 @@ exports.getCompanyStats = async (companyId) => {
     throw error;
   }
 };
+
+// Delete application from both tables
+exports.deleteApplication = async (applicationId) => {
+  try {
+    // Delete from universityapplications
+    await db.query(
+      `DELETE FROM universityapplications WHERE id = $1 OR application_id = $1`,
+      [applicationId]
+    );
+    
+    // Delete from companyapplications
+    await db.query(
+      `DELETE FROM companyapplications WHERE application_id = $1`,
+      [applicationId]
+    );
+    
+    return { success: true };
+  } catch (error) {
+    console.error("Error in deleteApplication:", error);
+    throw error;
+  }
+};

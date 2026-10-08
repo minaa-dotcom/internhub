@@ -349,3 +349,56 @@ exports.getCompanyStats = async (req, res) => {
     res.status(500).json({ message: "Server error", error: err.message });
   }
 };
+
+// Delete application (for university - only their own applications)
+exports.deleteApplication = async (req, res) => {
+  try {
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ message: "Not authorized" });
+    }
+
+    const applicationId = req.params.id;
+    const application = await Application.getApplicationById(applicationId);
+
+    if (!application) {
+      return res.status(404).json({ message: "Application not found" });
+    }
+
+    // Only university that submitted can delete, and only if status is pending or withdrawn
+    if (application.university_id !== req.user.id) {
+      return res.status(403).json({
+        message: "You don't have permission to delete this application"
+      });
+    }
+
+    if (!["pending", "withdrawn", "rejected"].includes(application.status)) {
+      return res.status(400).json({
+        message: "Cannot delete application that has been accepted or is under review"
+      });
+    }
+
+    // Delete associated files if they exist
+    const cvPath = application.cv_url ? path.join(uploadDir, path.basename(application.cv_url)) : null;
+    const resumePath = application.resume_url ? path.join(uploadDir, path.basename(application.resume_url)) : null;
+
+    // Delete from both tables
+    await Application.deleteApplication(applicationId);
+
+    // Delete files after successful database deletion
+    if (cvPath && fs.existsSync(cvPath)) {
+      fs.unlinkSync(cvPath);
+    }
+    if (resumePath && fs.existsSync(resumePath)) {
+      fs.unlinkSync(resumePath);
+    }
+
+    res.json({ 
+      success: true, 
+      message: "Application deleted successfully" 
+    });
+
+  } catch (err) {
+    console.error("DELETE APPLICATION ERROR:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};

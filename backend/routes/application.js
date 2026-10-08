@@ -49,4 +49,20 @@ ApplicationRouter.put(
   controller.reviewApplication
 );
 
+// Withdraw application (for university)
+ApplicationRouter.patch(
+  "/:id/withdraw",
+  protect,
+  restrictTo("university"),
+  controller.withdrawApplication
+);
+
+// Delete application (for university - only pending/withdrawn/rejected)
+ApplicationRouter.delete(
+  "/:id",
+  protect,
+  restrictTo("university"),
+  controller.deleteApplication
+);
+
 module.exports = ApplicationRouter;

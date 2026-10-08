@@ -28,6 +28,8 @@ export default function AdminDashboard() {
   })
   const [activities, setActivities] = useState<any[]>([])
   const [activitiesLoading, setActivitiesLoading] = useState(true)
+  const [statsLoading, setStatsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     fetchStats()
@@ -97,10 +99,13 @@ export default function AdminDashboard() {
 
   const fetchStats = async () => {
     try {
+      setStatsLoading(true)
+      setError(null)
       const token = localStorage.getItem('token')
       
       if (!token) {
-        console.error('No authentication token found for stats')
+        setError('No authentication token found')
+        setStatsLoading(false)
         return
       }
 
@@ -117,14 +122,12 @@ export default function AdminDashboard() {
         console.error('Error response:', errorData)
         
         if (response.status === 401) {
-          console.error('Unauthorized - token may be invalid')
-          alert('Your session may have expired. Please try logging out and logging in again.')
+          setError('Session expired. Please login again.')
           return
         }
         
         if (response.status === 403) {
-          console.error('Forbidden - insufficient permissions')
-          alert('You do not have permission to view admin stats. Please ensure you are logged in as an admin user.')
+          setError('Access denied. Admin privileges required.')
           return
         }
         
@@ -144,9 +147,11 @@ export default function AdminDashboard() {
         messages: parseInt(data.stats.messages) || 0,
         applications: parseInt(data.stats.applications) || 0
       })
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching stats:', error)
-      alert(`Failed to load admin stats: ${error.message || 'Please try again'}`)
+      setError(error.message || 'Failed to load statistics')
+    } finally {
+      setStatsLoading(false)
     }
   }
 
@@ -165,8 +170,51 @@ export default function AdminDashboard() {
           </p>
         </div>
 
+        {/* Error State */}
+        {error && (
+          <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-sm font-medium text-red-800">Error Loading Dashboard</h3>
+                <p className="text-sm text-red-700 mt-1">{error}</p>
+              </div>
+              <button
+                onClick={() => {
+                  setError(null)
+                  fetchStats()
+                  fetchRecentActivities()
+                }}
+                className="px-4 py-2 bg-red-100 hover:bg-red-200 text-red-800 rounded-lg text-sm font-medium transition-colors"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Stats Grid */}
-        <div className="grid gap-3 sm:gap-4 lg:gap-6 grid-cols-2 lg:grid-cols-4">
+        {statsLoading ? (
+          <div className="grid gap-3 sm:gap-4 lg:gap-6 grid-cols-2 lg:grid-cols-4">
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+              <Card key={i} className="border-gray-200 animate-pulse">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <div className="h-4 bg-gray-200 rounded w-24" />
+                  <div className="h-5 w-5 bg-gray-200 rounded" />
+                </CardHeader>
+                <CardContent>
+                  <div className="h-8 bg-gray-200 rounded w-16 mb-2" />
+                  <div className="h-3 bg-gray-200 rounded w-20" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="grid gap-3 sm:gap-4 lg:gap-6 grid-cols-2 lg:grid-cols-4">{/* Stats Grid */}
           <Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-white">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-xs sm:text-sm font-medium text-purple-700">
@@ -271,6 +319,7 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
         </div>
+        )}
 
         {/* Recent Activity & Quick Actions */}
         <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">

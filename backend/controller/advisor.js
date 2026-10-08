@@ -375,10 +375,109 @@ const getAllAssignedStudents = async (req, res) => {
   }
 };
 
+// Update advisor
+const updateAdvisor = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
+    
+    // Check if advisor exists
+    const advisor = await advisorModel.getAdvisorById(id);
+    if (!advisor) {
+      return res.status(404).json({
+        success: false,
+        message: "Advisor not found"
+      });
+    }
+
+    // For university users, ensure they can only update their own advisors
+    if (req.user.role === 'university' && advisor.university_id !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: "You don't have permission to update this advisor"
+      });
+    }
+
+    const updatedAdvisor = await advisorModel.updateAdvisor(id, updateData);
+    
+    res.status(200).json({
+      success: true,
+      message: "Advisor updated successfully",
+      advisor: updatedAdvisor
+    });
+  } catch (error) {
+    console.error("Error updating advisor:", error);
+    
+    // Handle duplicate email error
+    if (error.code === '23505' && error.constraint === 'advisors_email_key') {
+      return res.status(400).json({
+        success: false,
+        message: "An advisor with this email already exists",
+        error: "Duplicate email"
+      });
+    }
+    
+    res.status(500).json({
+      success: false,
+      message: "Failed to update advisor",
+      error: error.message
+    });
+  }
+};
+
+// Delete advisor
+const deleteAdvisor = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Check if advisor exists
+    const advisor = await advisorModel.getAdvisorById(id);
+    if (!advisor) {
+      return res.status(404).json({
+        success: false,
+        message: "Advisor not found"
+      });
+    }
+
+    // For university users, ensure they can only delete their own advisors
+    if (req.user.role === 'university' && advisor.university_id !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: "You don't have permission to delete this advisor"
+      });
+    }
+
+    // Check if advisor has active student assignments
+    const students = await advisorModel.getAssignedStudents(id);
+    if (students.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot delete advisor with active student assignments. Please reassign students first."
+      });
+    }
+
+    await advisorModel.deleteAdvisor(id);
+    
+    res.status(200).json({
+      success: true,
+      message: "Advisor deleted successfully"
+    });
+  } catch (error) {
+    console.error("Error deleting advisor:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete advisor",
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getAllAdvisors,
   getAdvisorById,
   createAdvisor,
+  updateAdvisor,
+  deleteAdvisor,
   getAssignedStudents,
   getAllAssignedStudents,
   assignStudent,

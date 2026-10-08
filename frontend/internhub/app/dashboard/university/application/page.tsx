@@ -16,7 +16,7 @@ import {
   Users, CheckCircle, XCircle, Clock, Search, Filter,
   ChevronLeft, ChevronRight, Eye, Mail, GraduationCap,
   Github, Linkedin, FileText, Download, Calendar,
-  Building2, UserCircle, Loader2, AlertCircle, BookOpen, User, X
+  Building2, UserCircle, Loader2, AlertCircle, BookOpen, User, X, Trash2
 } from "lucide-react";
 import type { Application, ApplicationStatus, BackendApplication} from "../../../types/Application";
 import API_URL from "@/lib/api";
@@ -123,6 +123,43 @@ export default function ApplicationsPage() {
     } catch (err) { 
       console.error("Download error:", err);
       alert("Failed to download file. Please try again.");
+    }
+  };
+
+  const deleteApplication = async (appId: string, status: string) => {
+    // Only allow deletion of pending, withdrawn, or rejected applications
+    const allowedStatuses = ['pending', 'withdrawn', 'rejected'];
+    if (!allowedStatuses.includes(status.toLowerCase())) {
+      alert("Cannot delete application that has been accepted or is under review");
+      return;
+    }
+
+    if (!confirm("Are you sure you want to permanently delete this application? This action cannot be undone.")) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('accessToken') || localStorage.getItem('token') || localStorage.getItem('authToken');
+      if (!token) {
+        alert("Authentication required");
+        return;
+      }
+
+      const response = await fetch(`${API_URL}/api/applications/${appId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to delete application");
+      }
+
+      alert("Application deleted successfully!");
+      fetchApps(); // Refresh the list
+    } catch (err) {
+      console.error("Delete error:", err);
+      alert(err instanceof Error ? err.message : "Failed to delete application");
     }
   };
 
@@ -356,14 +393,26 @@ export default function ApplicationsPage() {
                       </TableCell>
                       <TableCell>{getStatusBadge(app.status)}</TableCell>
                       <TableCell className="text-right">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => viewApplication(app)} 
-                          className="hover:bg-orange-100 hover:text-orange-700"
-                        >
-                          <Eye className="h-4 w-4 mr-1" />View
-                        </Button>
+                        <div className="flex items-center justify-end gap-2">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => viewApplication(app)} 
+                            className="hover:bg-blue-100 hover:text-blue-700"
+                          >
+                            <Eye className="h-4 w-4 mr-1" />View
+                          </Button>
+                          {['pending', 'withdrawn', 'rejected'].includes(app.status.toLowerCase()) && (
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => deleteApplication(app.id, app.status)} 
+                              className="hover:bg-red-100 hover:text-red-700"
+                            >
+                              <Trash2 className="h-4 w-4 mr-1" />Delete
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -431,6 +480,17 @@ export default function ApplicationsPage() {
                       >
                         <Eye className="h-4 w-4 mr-1" />View Details
                       </Button>
+                      
+                      {['pending', 'withdrawn', 'rejected'].includes(app.status.toLowerCase()) && (
+                        <Button 
+                          onClick={() => deleteApplication(app.id, app.status)} 
+                          variant="outline"
+                          className="w-full border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 mt-2"
+                          size="sm"
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" />Delete Application
+                        </Button>
+                      )}
                     </CardContent>
                   </Card>
                 ))

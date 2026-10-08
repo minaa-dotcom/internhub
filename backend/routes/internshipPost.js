@@ -6,6 +6,9 @@ const { protect, restrictTo } = require("../middleware/authmidlleware");
 router.post("/", protect, restrictTo("company"), ctrl.createPost);
 router.get("/", protect, ctrl.getAllActivePosts);
 router.get("/my", protect, restrictTo("company"), ctrl.getCompanyPosts);
+router.get("/:id", protect, ctrl.getPostById);
+router.put("/:id", protect, restrictTo("company"), ctrl.updatePost);
 router.patch("/:id/close", protect, restrictTo("company"), ctrl.closePost);
+router.delete("/:id", protect, restrictTo("company"), ctrl.deletePost);
 
 module.exports = router;
