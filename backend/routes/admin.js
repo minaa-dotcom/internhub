@@ -32,6 +32,9 @@ router.get("/stats", adminController.getDashboardStats);
 // Recent activities
 router.get("/activities", adminController.getRecentActivities);
 
+// Advanced analytics
+router.get("/analytics", adminController.getAdvancedAnalytics);
+
 // User management
 router.get("/users", adminController.getAllUsers);
 router.delete("/users/:userId", adminController.deleteUser);

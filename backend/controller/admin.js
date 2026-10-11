@@ -696,6 +696,216 @@ const getRecentActivities = async (req, res) => {
   }
 };
 
+// Get advanced analytics
+const getAdvancedAnalytics = async (req, res) => {
+  try {
+    const analytics = {
+      applicationMetrics: {},
+      topCompanies: [],
+      topUniversities: [],
+      growthTrends: {},
+      successRates: {},
+      platformHealth: {}
+    };
+
+    // 1. Application Success Metrics
+    try {
+      const appMetrics = await db.query(`
+        SELECT 
+          COUNT(*) as total_applications,
+          COUNT(*) FILTER (WHERE status = 'pending') as pending,
+          COUNT(*) FILTER (WHERE status = 'accepted') as accepted,
+          COUNT(*) FILTER (WHERE status = 'rejected') as rejected,
+          COUNT(*) FILTER (WHERE status = 'under_review') as under_review,
+          ROUND(
+            (COUNT(*) FILTER (WHERE status = 'accepted')::numeric / 
+            NULLIF(COUNT(*), 0) * 100), 2
+          ) as acceptance_rate,
+          ROUND(
+            (COUNT(*) FILTER (WHERE status = 'rejected')::numeric / 
+            NULLIF(COUNT(*), 0) * 100), 2
+          ) as rejection_rate,
+          COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days') as applications_this_week,
+          COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '30 days') as applications_this_month
+        FROM universityapplications
+      `);
+      analytics.applicationMetrics = appMetrics.rows[0];
+    } catch (err) {
+      console.log('Application metrics not available:', err.message);
+    }
+
+    // 2. Top Performing Companies (most applications received)
+    try {
+      const topCompanies = await db.query(`
+        SELECT 
+          u.organization_name as company_name,
+          u.email,
+          COUNT(ca.id) as total_applications,
+          COUNT(*) FILTER (WHERE ca.status = 'accepted') as accepted_applications,
+          COUNT(*) FILTER (WHERE ca.status = 'pending') as pending_applications,
+          ROUND(
+            (COUNT(*) FILTER (WHERE ca.status = 'accepted')::numeric / 
+            NULLIF(COUNT(ca.id), 0) * 100), 2
+          ) as acceptance_rate
+        FROM users u
+        LEFT JOIN companyapplications ca ON ca.company_id = u.id
+        WHERE u.role = 'company'
+        GROUP BY u.id, u.organization_name, u.email
+        HAVING COUNT(ca.id) > 0
+        ORDER BY total_applications DESC
+        LIMIT 10
+      `);
+      analytics.topCompanies = topCompanies.rows;
+    } catch (err) {
+      console.log('Top companies not available:', err.message);
+    }
+
+    // 3. Most Active Universities (most applications sent)
+    try {
+      const topUniversities = await db.query(`
+        SELECT 
+          u.organization_name as university_name,
+          u.email,
+          COUNT(ua.id) as total_applications,
+          COUNT(*) FILTER (WHERE ua.status = 'accepted') as accepted_applications,
+          COUNT(*) FILTER (WHERE ua.status = 'pending') as pending_applications,
+          ROUND(
+            (COUNT(*) FILTER (WHERE ua.status = 'accepted')::numeric / 
+            NULLIF(COUNT(ua.id), 0) * 100), 2
+          ) as success_rate
+        FROM users u
+        LEFT JOIN universityapplications ua ON ua.university_id = u.id
+        WHERE u.role = 'university'
+        GROUP BY u.id, u.organization_name, u.email
+        HAVING COUNT(ua.id) > 0
+        ORDER BY total_applications DESC
+        LIMIT 10
+      `);
+      analytics.topUniversities = topUniversities.rows;
+    } catch (err) {
+      console.log('Top universities not available:', err.message);
+    }
+
+    // 4. Growth Trends (last 30 days)
+    try {
+      const growthTrends = await db.query(`
+        SELECT 
+          DATE(created_at) as date,
+          COUNT(*) FILTER (WHERE role = 'company') as companies_registered,
+          COUNT(*) FILTER (WHERE role = 'university') as universities_registered,
+          COUNT(*) FILTER (WHERE role = 'student') as students_registered,
+          COUNT(*) as total_registered
+        FROM users
+        WHERE created_at >= NOW() - INTERVAL '30 days'
+        GROUP BY DATE(created_at)
+        ORDER BY date DESC
+      `);
+      analytics.growthTrends = {
+        daily: growthTrends.rows,
+        summary: {
+          total_new_users_30d: growthTrends.rows.reduce((sum, row) => sum + parseInt(row.total_registered), 0),
+          avg_daily_registrations: Math.round(
+            growthTrends.rows.reduce((sum, row) => sum + parseInt(row.total_registered), 0) / 
+            Math.max(growthTrends.rows.length, 1)
+          )
+        }
+      };
+    } catch (err) {
+      console.log('Growth trends not available:', err.message);
+    }
+
+    // 5. Application Trends (last 30 days)
+    try {
+      const applicationTrends = await db.query(`
+        SELECT 
+          DATE(created_at) as date,
+          COUNT(*) as applications_count,
+          COUNT(*) FILTER (WHERE status = 'accepted') as accepted_count,
+          COUNT(*) FILTER (WHERE status = 'rejected') as rejected_count
+        FROM universityapplications
+        WHERE created_at >= NOW() - INTERVAL '30 days'
+        GROUP BY DATE(created_at)
+        ORDER BY date DESC
+      `);
+      analytics.applicationTrends = applicationTrends.rows;
+    } catch (err) {
+      console.log('Application trends not available:', err.message);
+    }
+
+    // 6. Platform Health Metrics
+    try {
+      const healthMetrics = await db.query(`
+        SELECT 
+          (SELECT COUNT(*) FROM users WHERE status = 'active') as active_users,
+          (SELECT COUNT(*) FROM users WHERE status = 'suspended') as suspended_users,
+          (SELECT COUNT(*) FROM users WHERE email_verified = true) as verified_users,
+          (SELECT COUNT(*) FROM users WHERE email_verified = false) as unverified_users,
+          (SELECT COUNT(*) FROM messages WHERE created_at >= NOW() - INTERVAL '24 hours') as messages_24h,
+          (SELECT COUNT(*) FROM universityapplications WHERE created_at >= NOW() - INTERVAL '24 hours') as applications_24h
+      `);
+      analytics.platformHealth = healthMetrics.rows[0];
+    } catch (err) {
+      console.log('Platform health metrics not available:', err.message);
+    }
+
+    // 7. Department Distribution (applications by department)
+    try {
+      const departmentStats = await db.query(`
+        SELECT 
+          department,
+          COUNT(*) as application_count,
+          COUNT(*) FILTER (WHERE status = 'accepted') as accepted,
+          COUNT(*) FILTER (WHERE status = 'rejected') as rejected,
+          COUNT(*) FILTER (WHERE status = 'pending') as pending,
+          ROUND(
+            (COUNT(*) FILTER (WHERE status = 'accepted')::numeric / 
+            NULLIF(COUNT(*), 0) * 100), 2
+          ) as acceptance_rate
+        FROM universityapplications
+        WHERE department IS NOT NULL
+        GROUP BY department
+        ORDER BY application_count DESC
+        LIMIT 10
+      `);
+      analytics.departmentDistribution = departmentStats.rows;
+    } catch (err) {
+      console.log('Department stats not available:', err.message);
+    }
+
+    // 8. Response Time Analytics
+    try {
+      const responseTimeStats = await db.query(`
+        SELECT 
+          AVG(EXTRACT(EPOCH FROM (updated_at - created_at))/3600)::numeric(10,2) as avg_response_hours,
+          MIN(EXTRACT(EPOCH FROM (updated_at - created_at))/3600)::numeric(10,2) as min_response_hours,
+          MAX(EXTRACT(EPOCH FROM (updated_at - created_at))/3600)::numeric(10,2) as max_response_hours,
+          COUNT(*) FILTER (
+            WHERE updated_at - created_at <= INTERVAL '24 hours'
+          ) as responded_within_24h,
+          COUNT(*) as total_responded
+        FROM universityapplications
+        WHERE status != 'pending' AND updated_at IS NOT NULL
+      `);
+      analytics.responseTimeMetrics = responseTimeStats.rows[0];
+    } catch (err) {
+      console.log('Response time metrics not available:', err.message);
+    }
+
+    res.status(200).json({
+      success: true,
+      analytics: analytics
+    });
+
+  } catch (error) {
+    console.error("Error fetching advanced analytics:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch advanced analytics",
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getAllUsers,
   getDashboardStats,
@@ -708,6 +918,7 @@ module.exports = {
   deleteMessageAdmin,
   getConversationAdmin,
   getRecentActivities,
+  getAdvancedAnalytics,
   // University management
   getAllUniversities: async (req, res) => {
     try {

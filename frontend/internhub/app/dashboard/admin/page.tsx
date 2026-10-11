@@ -12,7 +12,15 @@ import {
   TrendingUp,
   Activity,
   UserCheck,
-  Briefcase
+  Briefcase,
+  BarChart3,
+  PieChart,
+  TrendingDown,
+  Award,
+  Target,
+  Clock,
+  CheckCircle,
+  XCircle
 } from "lucide-react"
 
 export default function AdminDashboard() {
@@ -30,13 +38,18 @@ export default function AdminDashboard() {
   const [activitiesLoading, setActivitiesLoading] = useState(true)
   const [statsLoading, setStatsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [analytics, setAnalytics] = useState<any>(null)
+  const [analyticsLoading, setAnalyticsLoading] = useState(true)
+  const [showAnalytics, setShowAnalytics] = useState(false)
 
   useEffect(() => {
     fetchStats()
     fetchRecentActivities()
+    fetchAdvancedAnalytics()
     const interval = setInterval(() => {
       fetchStats()
       fetchRecentActivities()
+      fetchAdvancedAnalytics()
     }, 30000)
     return () => clearInterval(interval)
   }, [])
@@ -65,6 +78,34 @@ export default function AdminDashboard() {
       console.error('Error fetching activities:', error)
     } finally {
       setActivitiesLoading(false)
+    }
+  }
+
+  const fetchAdvancedAnalytics = async () => {
+    try {
+      setAnalyticsLoading(true)
+      const token = localStorage.getItem('token')
+      if (!token) {
+        console.error('No authentication token found')
+        return
+      }
+
+      const response = await fetch(`${ADMIN_ENDPOINTS.STATS.replace('/stats', '/analytics')}`, {
+        headers: getAuthHeaders()
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch analytics')
+      }
+
+      const data = await response.json()
+      if (data.success) {
+        setAnalytics(data.analytics)
+      }
+    } catch (error) {
+      console.error('Error fetching analytics:', error)
+    } finally {
+      setAnalyticsLoading(false)
     }
   }
 
@@ -320,6 +361,275 @@ export default function AdminDashboard() {
           </Card>
         </div>
         )}
+
+        {/* System Analytics Section */}
+        <Card className="border-purple-200">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-base sm:text-lg text-purple-700 flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5" />
+              System Analytics
+            </CardTitle>
+            <button
+              onClick={() => setShowAnalytics(!showAnalytics)}
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 transition-colors flex items-center gap-2"
+            >
+              {showAnalytics ? 'Hide Details' : 'View Details'}
+              <BarChart3 className="h-4 w-4" />
+            </button>
+          </CardHeader>
+          <CardContent>
+            {showAnalytics ? (
+              analyticsLoading ? (
+                <div className="text-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-700 mx-auto mb-4"></div>
+                  <p className="text-gray-500">Loading analytics...</p>
+                </div>
+              ) : analytics ? (
+                <div className="space-y-6">
+                  {/* Application Success Metrics */}
+                  {analytics.applicationMetrics && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                        <Target className="h-4 w-4 text-purple-600" />
+                        Application Success Rates
+                      </h3>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div className="p-3 bg-gradient-to-br from-green-50 to-white rounded-lg border border-green-200">
+                          <p className="text-xs text-gray-600">Acceptance Rate</p>
+                          <p className="text-2xl font-bold text-green-600">
+                            {analytics.applicationMetrics.acceptance_rate || 0}%
+                          </p>
+                        </div>
+                        <div className="p-3 bg-gradient-to-br from-red-50 to-white rounded-lg border border-red-200">
+                          <p className="text-xs text-gray-600">Rejection Rate</p>
+                          <p className="text-2xl font-bold text-red-600">
+                            {analytics.applicationMetrics.rejection_rate || 0}%
+                          </p>
+                        </div>
+                        <div className="p-3 bg-gradient-to-br from-blue-50 to-white rounded-lg border border-blue-200">
+                          <p className="text-xs text-gray-600">This Week</p>
+                          <p className="text-2xl font-bold text-blue-600">
+                            {analytics.applicationMetrics.applications_this_week || 0}
+                          </p>
+                        </div>
+                        <div className="p-3 bg-gradient-to-br from-purple-50 to-white rounded-lg border border-purple-200">
+                          <p className="text-xs text-gray-600">This Month</p>
+                          <p className="text-2xl font-bold text-purple-600">
+                            {analytics.applicationMetrics.applications_this_month || 0}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Top Performing Companies */}
+                  {analytics.topCompanies && analytics.topCompanies.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                        <Award className="h-4 w-4 text-orange-600" />
+                        Top Companies (Most Applications)
+                      </h3>
+                      <div className="space-y-2">
+                        {analytics.topCompanies.slice(0, 5).map((company: any, index: number) => (
+                          <div key={index} className="flex items-center justify-between p-3 bg-orange-50 rounded-lg border border-orange-100">
+                            <div className="flex items-center gap-3">
+                              <span className="text-lg font-bold text-orange-600">#{index + 1}</span>
+                              <div>
+                                <p className="text-sm font-medium text-gray-900">{company.company_name}</p>
+                                <p className="text-xs text-gray-600">{company.total_applications} applications</p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm font-semibold text-green-600">{company.acceptance_rate}% accepted</p>
+                              <p className="text-xs text-gray-500">{company.pending_applications} pending</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Most Active Universities */}
+                  {analytics.topUniversities && analytics.topUniversities.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                        <GraduationCap className="h-4 w-4 text-blue-600" />
+                        Most Active Universities
+                      </h3>
+                      <div className="space-y-2">
+                        {analytics.topUniversities.slice(0, 5).map((university: any, index: number) => (
+                          <div key={index} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-100">
+                            <div className="flex items-center gap-3">
+                              <span className="text-lg font-bold text-blue-600">#{index + 1}</span>
+                              <div>
+                                <p className="text-sm font-medium text-gray-900">{university.university_name}</p>
+                                <p className="text-xs text-gray-600">{university.total_applications} applications sent</p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm font-semibold text-green-600">{university.success_rate}% success</p>
+                              <p className="text-xs text-gray-500">{university.pending_applications} pending</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Department Distribution */}
+                  {analytics.departmentDistribution && analytics.departmentDistribution.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                        <PieChart className="h-4 w-4 text-indigo-600" />
+                        Applications by Department
+                      </h3>
+                      <div className="space-y-2">
+                        {analytics.departmentDistribution.slice(0, 5).map((dept: any, index: number) => (
+                          <div key={index} className="p-3 bg-indigo-50 rounded-lg border border-indigo-100">
+                            <div className="flex justify-between items-center mb-2">
+                              <p className="text-sm font-medium text-gray-900">{dept.department}</p>
+                              <p className="text-sm font-semibold text-indigo-600">{dept.application_count} apps</p>
+                            </div>
+                            <div className="flex gap-2 text-xs">
+                              <span className="px-2 py-1 bg-green-100 text-green-700 rounded">
+                                <CheckCircle className="h-3 w-3 inline mr-1" />
+                                {dept.accepted} accepted
+                              </span>
+                              <span className="px-2 py-1 bg-red-100 text-red-700 rounded">
+                                <XCircle className="h-3 w-3 inline mr-1" />
+                                {dept.rejected} rejected
+                              </span>
+                              <span className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded">
+                                <Clock className="h-3 w-3 inline mr-1" />
+                                {dept.pending} pending
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Growth Trends */}
+                  {analytics.growthTrends && analytics.growthTrends.summary && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                        <TrendingUp className="h-4 w-4 text-green-600" />
+                        Platform Growth (Last 30 Days)
+                      </h3>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="p-4 bg-gradient-to-br from-green-50 to-white rounded-lg border border-green-200">
+                          <p className="text-xs text-gray-600 mb-1">Total New Users</p>
+                          <p className="text-3xl font-bold text-green-600">
+                            {analytics.growthTrends.summary.total_new_users_30d || 0}
+                          </p>
+                        </div>
+                        <div className="p-4 bg-gradient-to-br from-blue-50 to-white rounded-lg border border-blue-200">
+                          <p className="text-xs text-gray-600 mb-1">Avg. Daily Registrations</p>
+                          <p className="text-3xl font-bold text-blue-600">
+                            {analytics.growthTrends.summary.avg_daily_registrations || 0}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Response Time Metrics */}
+                  {analytics.responseTimeMetrics && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-yellow-600" />
+                        Application Response Times
+                      </h3>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                          <p className="text-xs text-gray-600">Avg. Response</p>
+                          <p className="text-xl font-bold text-yellow-600">
+                            {analytics.responseTimeMetrics.avg_response_hours || 0}h
+                          </p>
+                        </div>
+                        <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                          <p className="text-xs text-gray-600">Within 24h</p>
+                          <p className="text-xl font-bold text-green-600">
+                            {analytics.responseTimeMetrics.responded_within_24h || 0}
+                          </p>
+                        </div>
+                        <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                          <p className="text-xs text-gray-600">Total Responded</p>
+                          <p className="text-xl font-bold text-blue-600">
+                            {analytics.responseTimeMetrics.total_responded || 0}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Platform Health */}
+                  {analytics.platformHealth && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                        <Activity className="h-4 w-4 text-purple-600" />
+                        Platform Health & Activity
+                      </h3>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                          <p className="text-xs text-gray-600">Active Users</p>
+                          <p className="text-xl font-bold text-green-600">
+                            {analytics.platformHealth.active_users || 0}
+                          </p>
+                        </div>
+                        <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                          <p className="text-xs text-gray-600">Verified Users</p>
+                          <p className="text-xl font-bold text-blue-600">
+                            {analytics.platformHealth.verified_users || 0}
+                          </p>
+                        </div>
+                        <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
+                          <p className="text-xs text-gray-600">Messages (24h)</p>
+                          <p className="text-xl font-bold text-purple-600">
+                            {analytics.platformHealth.messages_24h || 0}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <BarChart3 className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>No analytics data available</p>
+                </div>
+              )
+            ) : (
+              <div className="text-center py-8">
+                <BarChart3 className="h-16 w-16 mx-auto mb-4 text-purple-300" />
+                <p className="text-gray-600 mb-4">Click "View Details" to see comprehensive analytics</p>
+                <ul className="text-sm text-left max-w-md mx-auto space-y-2 text-gray-600">
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                    <span>Application success rates and trends</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                    <span>Top performing companies and universities</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                    <span>Department-wise application distribution</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                    <span>Platform growth and engagement metrics</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                    <span>Response time analytics</span>
+                  </li>
+                </ul>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Recent Activity & Quick Actions */}
         <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">

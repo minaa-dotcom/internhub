@@ -2,6 +2,16 @@
   "name": "internhub",
   "version": "0.1.0",
   "private": true,
+  "author": "Minaa",
+  "description": "InternHub - Ethiopian Internship Management Platform",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/minaa-dotcom/internhub.git"
+  },
+  "bugs": {
+    "url": "https://github.com/minaa-dotcom/internhub/issues"
+  },
+  "homepage": "https://github.com/minaa-dotcom/internhub#readme",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
