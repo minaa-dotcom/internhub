@@ -19,19 +19,13 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/minaa-dotcom/internhub.git"
+    "url": "git+https://github.com/ABDIFEKEDA/internhub.git"
   },
-  "keywords": [
-    "internship",
-    "ethiopia",
-    "internhub",
-    "university",
-    "company"
-  ],
-  "author": "Minaa",
+  "keywords": [],
+  "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/minaa-dotcom/internhub/issues"
+    "url": "https://github.com/ABDIFEKEDA/internhub/issues"
   },
-  "homepage": "https://github.com/minaa-dotcom/internhub#readme"
+  "homepage": "https://github.com/ABDIFEKEDA/internhub#readme"
 }

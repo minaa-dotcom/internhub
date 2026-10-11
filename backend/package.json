@@ -8,22 +8,9 @@
     "dev": "nodemon app.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [
-    "internship",
-    "backend",
-    "api",
-    "postgresql"
-  ],
-  "author": "Minaa",
+  "keywords": [],
+  "author": "",
   "license": "ISC",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/minaa-dotcom/internhub.git"
-  },
-  "bugs": {
-    "url": "https://github.com/minaa-dotcom/internhub/issues"
-  },
-  "homepage": "https://github.com/minaa-dotcom/internhub#readme",
   "type": "commonjs",
   "dependencies": {
     "bcrypt": "^6.0.0",

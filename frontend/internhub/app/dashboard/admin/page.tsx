@@ -20,7 +20,9 @@ import {
   Target,
   Clock,
   CheckCircle,
-  XCircle
+  XCircle,
+  Calendar,
+  Download
 } from "lucide-react"
 
 export default function AdminDashboard() {
@@ -362,275 +364,6 @@ export default function AdminDashboard() {
         </div>
         )}
 
-        {/* System Analytics Section */}
-        <Card className="border-purple-200">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-base sm:text-lg text-purple-700 flex items-center gap-2">
-              <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5" />
-              System Analytics
-            </CardTitle>
-            <button
-              onClick={() => setShowAnalytics(!showAnalytics)}
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 transition-colors flex items-center gap-2"
-            >
-              {showAnalytics ? 'Hide Details' : 'View Details'}
-              <BarChart3 className="h-4 w-4" />
-            </button>
-          </CardHeader>
-          <CardContent>
-            {showAnalytics ? (
-              analyticsLoading ? (
-                <div className="text-center py-12">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-700 mx-auto mb-4"></div>
-                  <p className="text-gray-500">Loading analytics...</p>
-                </div>
-              ) : analytics ? (
-                <div className="space-y-6">
-                  {/* Application Success Metrics */}
-                  {analytics.applicationMetrics && (
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                        <Target className="h-4 w-4 text-purple-600" />
-                        Application Success Rates
-                      </h3>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        <div className="p-3 bg-gradient-to-br from-green-50 to-white rounded-lg border border-green-200">
-                          <p className="text-xs text-gray-600">Acceptance Rate</p>
-                          <p className="text-2xl font-bold text-green-600">
-                            {analytics.applicationMetrics.acceptance_rate || 0}%
-                          </p>
-                        </div>
-                        <div className="p-3 bg-gradient-to-br from-red-50 to-white rounded-lg border border-red-200">
-                          <p className="text-xs text-gray-600">Rejection Rate</p>
-                          <p className="text-2xl font-bold text-red-600">
-                            {analytics.applicationMetrics.rejection_rate || 0}%
-                          </p>
-                        </div>
-                        <div className="p-3 bg-gradient-to-br from-blue-50 to-white rounded-lg border border-blue-200">
-                          <p className="text-xs text-gray-600">This Week</p>
-                          <p className="text-2xl font-bold text-blue-600">
-                            {analytics.applicationMetrics.applications_this_week || 0}
-                          </p>
-                        </div>
-                        <div className="p-3 bg-gradient-to-br from-purple-50 to-white rounded-lg border border-purple-200">
-                          <p className="text-xs text-gray-600">This Month</p>
-                          <p className="text-2xl font-bold text-purple-600">
-                            {analytics.applicationMetrics.applications_this_month || 0}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Top Performing Companies */}
-                  {analytics.topCompanies && analytics.topCompanies.length > 0 && (
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                        <Award className="h-4 w-4 text-orange-600" />
-                        Top Companies (Most Applications)
-                      </h3>
-                      <div className="space-y-2">
-                        {analytics.topCompanies.slice(0, 5).map((company: any, index: number) => (
-                          <div key={index} className="flex items-center justify-between p-3 bg-orange-50 rounded-lg border border-orange-100">
-                            <div className="flex items-center gap-3">
-                              <span className="text-lg font-bold text-orange-600">#{index + 1}</span>
-                              <div>
-                                <p className="text-sm font-medium text-gray-900">{company.company_name}</p>
-                                <p className="text-xs text-gray-600">{company.total_applications} applications</p>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-sm font-semibold text-green-600">{company.acceptance_rate}% accepted</p>
-                              <p className="text-xs text-gray-500">{company.pending_applications} pending</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Most Active Universities */}
-                  {analytics.topUniversities && analytics.topUniversities.length > 0 && (
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                        <GraduationCap className="h-4 w-4 text-blue-600" />
-                        Most Active Universities
-                      </h3>
-                      <div className="space-y-2">
-                        {analytics.topUniversities.slice(0, 5).map((university: any, index: number) => (
-                          <div key={index} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-100">
-                            <div className="flex items-center gap-3">
-                              <span className="text-lg font-bold text-blue-600">#{index + 1}</span>
-                              <div>
-                                <p className="text-sm font-medium text-gray-900">{university.university_name}</p>
-                                <p className="text-xs text-gray-600">{university.total_applications} applications sent</p>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-sm font-semibold text-green-600">{university.success_rate}% success</p>
-                              <p className="text-xs text-gray-500">{university.pending_applications} pending</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Department Distribution */}
-                  {analytics.departmentDistribution && analytics.departmentDistribution.length > 0 && (
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                        <PieChart className="h-4 w-4 text-indigo-600" />
-                        Applications by Department
-                      </h3>
-                      <div className="space-y-2">
-                        {analytics.departmentDistribution.slice(0, 5).map((dept: any, index: number) => (
-                          <div key={index} className="p-3 bg-indigo-50 rounded-lg border border-indigo-100">
-                            <div className="flex justify-between items-center mb-2">
-                              <p className="text-sm font-medium text-gray-900">{dept.department}</p>
-                              <p className="text-sm font-semibold text-indigo-600">{dept.application_count} apps</p>
-                            </div>
-                            <div className="flex gap-2 text-xs">
-                              <span className="px-2 py-1 bg-green-100 text-green-700 rounded">
-                                <CheckCircle className="h-3 w-3 inline mr-1" />
-                                {dept.accepted} accepted
-                              </span>
-                              <span className="px-2 py-1 bg-red-100 text-red-700 rounded">
-                                <XCircle className="h-3 w-3 inline mr-1" />
-                                {dept.rejected} rejected
-                              </span>
-                              <span className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded">
-                                <Clock className="h-3 w-3 inline mr-1" />
-                                {dept.pending} pending
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Growth Trends */}
-                  {analytics.growthTrends && analytics.growthTrends.summary && (
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                        <TrendingUp className="h-4 w-4 text-green-600" />
-                        Platform Growth (Last 30 Days)
-                      </h3>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="p-4 bg-gradient-to-br from-green-50 to-white rounded-lg border border-green-200">
-                          <p className="text-xs text-gray-600 mb-1">Total New Users</p>
-                          <p className="text-3xl font-bold text-green-600">
-                            {analytics.growthTrends.summary.total_new_users_30d || 0}
-                          </p>
-                        </div>
-                        <div className="p-4 bg-gradient-to-br from-blue-50 to-white rounded-lg border border-blue-200">
-                          <p className="text-xs text-gray-600 mb-1">Avg. Daily Registrations</p>
-                          <p className="text-3xl font-bold text-blue-600">
-                            {analytics.growthTrends.summary.avg_daily_registrations || 0}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Response Time Metrics */}
-                  {analytics.responseTimeMetrics && (
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                        <Clock className="h-4 w-4 text-yellow-600" />
-                        Application Response Times
-                      </h3>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                        <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                          <p className="text-xs text-gray-600">Avg. Response</p>
-                          <p className="text-xl font-bold text-yellow-600">
-                            {analytics.responseTimeMetrics.avg_response_hours || 0}h
-                          </p>
-                        </div>
-                        <div className="p-3 bg-green-50 rounded-lg border border-green-200">
-                          <p className="text-xs text-gray-600">Within 24h</p>
-                          <p className="text-xl font-bold text-green-600">
-                            {analytics.responseTimeMetrics.responded_within_24h || 0}
-                          </p>
-                        </div>
-                        <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                          <p className="text-xs text-gray-600">Total Responded</p>
-                          <p className="text-xl font-bold text-blue-600">
-                            {analytics.responseTimeMetrics.total_responded || 0}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Platform Health */}
-                  {analytics.platformHealth && (
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                        <Activity className="h-4 w-4 text-purple-600" />
-                        Platform Health & Activity
-                      </h3>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                        <div className="p-3 bg-green-50 rounded-lg border border-green-200">
-                          <p className="text-xs text-gray-600">Active Users</p>
-                          <p className="text-xl font-bold text-green-600">
-                            {analytics.platformHealth.active_users || 0}
-                          </p>
-                        </div>
-                        <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                          <p className="text-xs text-gray-600">Verified Users</p>
-                          <p className="text-xl font-bold text-blue-600">
-                            {analytics.platformHealth.verified_users || 0}
-                          </p>
-                        </div>
-                        <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
-                          <p className="text-xs text-gray-600">Messages (24h)</p>
-                          <p className="text-xl font-bold text-purple-600">
-                            {analytics.platformHealth.messages_24h || 0}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <BarChart3 className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>No analytics data available</p>
-                </div>
-              )
-            ) : (
-              <div className="text-center py-8">
-                <BarChart3 className="h-16 w-16 mx-auto mb-4 text-purple-300" />
-                <p className="text-gray-600 mb-4">Click "View Details" to see comprehensive analytics</p>
-                <ul className="text-sm text-left max-w-md mx-auto space-y-2 text-gray-600">
-                  <li className="flex items-start gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span>Application success rates and trends</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span>Top performing companies and universities</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span>Department-wise application distribution</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span>Platform growth and engagement metrics</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span>Response time analytics</span>
-                  </li>
-                </ul>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
         {/* Recent Activity & Quick Actions */}
         <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
           <Card className="border-purple-200">
@@ -715,6 +448,255 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Advanced System Analytics - Recommended Features */}
+        <Card className="border-purple-200">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base sm:text-lg text-purple-700 flex items-center gap-2">
+                <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5" />
+                System Analytics & Recommended Features
+              </CardTitle>
+              <button
+                onClick={() => setShowAnalytics(!showAnalytics)}
+                className="px-3 py-1 text-xs font-medium bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-md transition-colors"
+              >
+                {showAnalytics ? 'Hide' : 'Show'} Details
+              </button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {showAnalytics && (
+              <div className="space-y-6">
+                {/* Application Analytics */}
+                <div className="border-b pb-4">
+                  <h3 className="text-sm font-semibold text-purple-900 mb-3 flex items-center gap-2">
+                    <Target className="h-4 w-4" />
+                    Application Analytics
+                  </h3>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="bg-green-50 p-3 rounded-lg border border-green-200">
+                      <div className="flex items-center justify-between">
+                        <CheckCircle className="h-5 w-5 text-green-600" />
+                        <span className="text-xs text-green-600">Accepted</span>
+                      </div>
+                      <p className="text-2xl font-bold text-green-900 mt-2">
+                        {analytics?.applications?.accepted || 0}
+                      </p>
+                      <p className="text-xs text-gray-600 mt-1">
+                        {analytics?.applications?.acceptanceRate || 0}% acceptance rate
+                      </p>
+                    </div>
+                    <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                      <div className="flex items-center justify-between">
+                        <Clock className="h-5 w-5 text-yellow-600" />
+                        <span className="text-xs text-yellow-600">Pending</span>
+                      </div>
+                      <p className="text-2xl font-bold text-yellow-900 mt-2">
+                        {analytics?.applications?.pending || 0}
+                      </p>
+                      <p className="text-xs text-gray-600 mt-1">Awaiting review</p>
+                    </div>
+                    <div className="bg-red-50 p-3 rounded-lg border border-red-200">
+                      <div className="flex items-center justify-between">
+                        <XCircle className="h-5 w-5 text-red-600" />
+                        <span className="text-xs text-red-600">Rejected</span>
+                      </div>
+                      <p className="text-2xl font-bold text-red-900 mt-2">
+                        {analytics?.applications?.rejected || 0}
+                      </p>
+                      <p className="text-xs text-gray-600 mt-1">
+                        {analytics?.applications?.rejectionRate || 0}% rejection rate
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Recommended Features */}
+                <div>
+                  <h3 className="text-sm font-semibold text-purple-900 mb-3 flex items-center gap-2">
+                    <Award className="h-4 w-4" />
+                    Recommended Features to Add
+                  </h3>
+                  <div className="space-y-3">
+                    {/* Feature 1 */}
+                    <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                      <div className="mt-0.5">
+                        <PieChart className="h-5 w-5 text-blue-600" />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="text-sm font-semibold text-blue-900">
+                          📊 Interactive Charts & Graphs
+                        </h4>
+                        <p className="text-xs text-gray-700 mt-1">
+                          Add visual charts showing application trends, user growth over time, and department-wise statistics using libraries like Chart.js or Recharts
+                        </p>
+                        <span className="inline-block mt-2 px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded">
+                          High Priority
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Feature 2 */}
+                    <div className="flex items-start gap-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                      <div className="mt-0.5">
+                        <TrendingUp className="h-5 w-5 text-green-600" />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="text-sm font-semibold text-green-900">
+                          📈 Real-time Notifications System
+                        </h4>
+                        <p className="text-xs text-gray-700 mt-1">
+                          Implement real-time notifications for new applications, status changes, and messages using WebSocket or Server-Sent Events (SSE)
+                        </p>
+                        <span className="inline-block mt-2 px-2 py-1 bg-green-100 text-green-700 text-xs rounded">
+                          Medium Priority
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Feature 3 */}
+                    <div className="flex items-start gap-3 p-3 bg-purple-50 rounded-lg border border-purple-200">
+                      <div className="mt-0.5">
+                        <Download className="h-5 w-5 text-purple-600" />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="text-sm font-semibold text-purple-900">
+                          📥 Bulk Operations & Data Export
+                        </h4>
+                        <p className="text-xs text-gray-700 mt-1">
+                          Enable bulk actions (accept/reject multiple applications), export detailed reports in PDF/Excel format with filters and date ranges
+                        </p>
+                        <span className="inline-block mt-2 px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded">
+                          High Priority
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Feature 4 */}
+                    <div className="flex items-start gap-3 p-3 bg-orange-50 rounded-lg border border-orange-200">
+                      <div className="mt-0.5">
+                        <MessageSquare className="h-5 w-5 text-orange-600" />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="text-sm font-semibold text-orange-900">
+                          💬 Email Templates & Automation
+                        </h4>
+                        <p className="text-xs text-gray-700 mt-1">
+                          Create customizable email templates for acceptance/rejection letters, automatic reminders for pending applications, and welcome emails
+                        </p>
+                        <span className="inline-block mt-2 px-2 py-1 bg-orange-100 text-orange-700 text-xs rounded">
+                          Medium Priority
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Feature 5 */}
+                    <div className="flex items-start gap-3 p-3 bg-teal-50 rounded-lg border border-teal-200">
+                      <div className="mt-0.5">
+                        <Users className="h-5 w-5 text-teal-600" />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="text-sm font-semibold text-teal-900">
+                          👥 Advanced User Management
+                        </h4>
+                        <p className="text-xs text-gray-700 mt-1">
+                          Add user roles & permissions management, activity logs, account suspension/reactivation, and bulk user import from CSV/Excel
+                        </p>
+                        <span className="inline-block mt-2 px-2 py-1 bg-teal-100 text-teal-700 text-xs rounded">
+                          High Priority
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Feature 6 */}
+                    <div className="flex items-start gap-3 p-3 bg-indigo-50 rounded-lg border border-indigo-200">
+                      <div className="mt-0.5">
+                        <Activity className="h-5 w-5 text-indigo-600" />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="text-sm font-semibold text-indigo-900">
+                          🔍 Advanced Search & Filters
+                        </h4>
+                        <p className="text-xs text-gray-700 mt-1">
+                          Implement advanced search with multiple filters (date range, department, status, university), saved search filters, and full-text search
+                        </p>
+                        <span className="inline-block mt-2 px-2 py-1 bg-indigo-100 text-indigo-700 text-xs rounded">
+                          Medium Priority
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Feature 7 */}
+                    <div className="flex items-start gap-3 p-3 bg-pink-50 rounded-lg border border-pink-200">
+                      <div className="mt-0.5">
+                        <Calendar className="h-5 w-5 text-pink-600" />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="text-sm font-semibold text-pink-900">
+                          📅 Interview Scheduling System
+                        </h4>
+                        <p className="text-xs text-gray-700 mt-1">
+                          Built-in calendar for scheduling interviews, automatic email invites with calendar links, video call integration (Zoom/Google Meet)
+                        </p>
+                        <span className="inline-block mt-2 px-2 py-1 bg-pink-100 text-pink-700 text-xs rounded">
+                          Low Priority
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Feature 8 */}
+                    <div className="flex items-start gap-3 p-3 bg-amber-50 rounded-lg border border-amber-200">
+                      <div className="mt-0.5">
+                        <Award className="h-5 w-5 text-amber-600" />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="text-sm font-semibold text-amber-900">
+                          🎯 Smart Matching Algorithm
+                        </h4>
+                        <p className="text-xs text-gray-700 mt-1">
+                          AI-powered matching between students and companies based on skills, interests, company requirements, and past acceptance patterns
+                        </p>
+                        <span className="inline-block mt-2 px-2 py-1 bg-amber-100 text-amber-700 text-xs rounded">
+                          Future Enhancement
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Debug Tools Info */}
+                <div className="border-t pt-4">
+                  <h3 className="text-sm font-semibold text-purple-900 mb-3 flex items-center gap-2">
+                    🛠️ Developer Tools
+                  </h3>
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <p className="text-xs text-gray-700 mb-2">
+                      <strong>Chrome DevTools</strong> is essential for development and debugging:
+                    </p>
+                    <ul className="text-xs text-gray-700 space-y-1 ml-4 list-disc">
+                      <li><strong>Console:</strong> View errors, API responses, and debug logs (Press F12)</li>
+                      <li><strong>Network Tab:</strong> Monitor API calls, response times, and failed requests</li>
+                      <li><strong>Elements Tab:</strong> Inspect and modify HTML/CSS in real-time</li>
+                      <li><strong>Application Tab:</strong> View localStorage, cookies, and session data</li>
+                      <li><strong>Performance:</strong> Identify slow components and optimize loading times</li>
+                    </ul>
+                    <p className="text-xs text-blue-600 mt-3 font-medium">
+                      💡 Tip: Press F12 or Right-click → Inspect to open DevTools in Chrome/Edge
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {!showAnalytics && (
+              <div className="text-center py-6 text-gray-500">
+                <BarChart3 className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">Click "Show Details" to view advanced analytics and recommendations</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </main>
     </div>
   )
