@@ -906,6 +906,54 @@ const getAdvancedAnalytics = async (req, res) => {
   }
 };
 
+// Get all universities (simplified for admin view)
+const getAllUniversities = async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT id, email, organization_name, status, created_at 
+      FROM users 
+      WHERE role = 'university' 
+      ORDER BY created_at DESC
+    `);
+    
+    res.status(200).json({
+      success: true,
+      universities: result.rows
+    });
+  } catch (error) {
+    console.error("Error fetching universities:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch universities",
+      error: error.message
+    });
+  }
+};
+
+// Get all companies (simplified for admin view)
+const getAllCompanies = async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT id, email, organization_name, status, created_at 
+      FROM users 
+      WHERE role = 'company' 
+      ORDER BY created_at DESC
+    `);
+    
+    res.status(200).json({
+      success: true,
+      companies: result.rows
+    });
+  } catch (error) {
+    console.error("Error fetching companies:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch companies",
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getAllUsers,
   getDashboardStats,
@@ -919,6 +967,8 @@ module.exports = {
   getConversationAdmin,
   getRecentActivities,
   getAdvancedAnalytics,
+  getAllUniversities,
+  getAllCompaniesnalytics,
   // University management
   getAllUniversities: async (req, res) => {
     try {
