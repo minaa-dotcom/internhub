@@ -130,7 +130,15 @@ export default function SignupPage() {
         setIsLoading(false)
         return 
       }
-      router.push("/auth/login")
+      
+      // Check if email verification is required
+      if (data.requiresVerification) {
+        alert("Account created successfully! Please check your email to verify your account before logging in.")
+        router.push("/auth/login")
+      } else {
+        alert("Account created successfully! You can now log in.")
+        router.push("/auth/login")
+      }
     } catch {
       setError("Something went wrong")
       setIsLoading(false)

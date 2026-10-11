@@ -140,7 +140,8 @@ export default function CompanyApplicationsPage() {
       setTotalPages(data.pagination?.pages || 1)
     } catch (error) {
       console.error('Error fetching applications:', error)
-      alert(`Failed to load applications: ${error.message || 'Please try again'}`)
+      const errorMessage = error instanceof Error ? error.message : 'Please try again'
+      alert(`Failed to load applications: ${errorMessage}`)
     } finally {
       setLoading(false)
     }
@@ -238,14 +239,97 @@ export default function CompanyApplicationsPage() {
   }
 
   // Download file
-  const downloadFile = (fileUrl: string, fileName: string) => {
-    const a = document.createElement('a')
-    a.href = `${API_URL}${fileUrl}`
-    a.download = fileName
-    a.target = '_blank'
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
+  const downloadFile = async (fileUrl: string | null | undefined, fileName: string) => {
+    if (!fileUrl) {
+      alert('File not available for download. The applicant may not have uploaded this document.')
+      return
+    }
+    
+    try {
+      // Construct full URL
+      const fullUrl = fileUrl.startsWith('http') ? fileUrl : `${API_URL}${fileUrl}`
+      
+      console.log('Downloading file from:', fullUrl)
+      
+      // Create a temporary anchor element and trigger download
+      const link = document.createElement('a')
+      link.href = fullUrl
+      link.target = '_blank'
+      link.rel = 'noopener noreferrer'
+      
+      // Set download attribute with filename
+      link.download = fileName
+      
+      // Append to body, click, and remove
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      
+    } catch (error) {
+      console.error('Download error:', error)
+      alert('Failed to download file. Please check your connection and try again.')
+    }
+  }
+
+  // Export applications to CSV
+  const exportToCSV = () => {
+    try {
+      // Prepare CSV headers
+      const headers = [
+        'Application ID',
+        'First Name',
+        'Last Name',
+        'Email',
+        'Department',
+        'Academic Year',
+        'Status',
+        'University',
+        'GitHub Link',
+        'LinkedIn Link',
+        'Applied Date',
+        'Feedback'
+      ]
+
+      // Prepare CSV rows
+      const rows = applications.map(app => [
+        app.application_id || '',
+        app.first_name || '',
+        app.last_name || '',
+        app.email || '',
+        app.department || '',
+        app.academic_year || '',
+        app.status || '',
+        app.university_name || '',
+        app.github_link || '',
+        app.linkedin_link || '',
+        new Date(app.created_at).toLocaleDateString() || '',
+        app.feedback || ''
+      ])
+
+      // Create CSV content
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+      ].join('\n')
+
+      // Create blob and download
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+      const link = document.createElement('a')
+      const url = URL.createObjectURL(blob)
+      
+      link.setAttribute('href', url)
+      link.setAttribute('download', `applications_report_${new Date().toISOString().split('T')[0]}.csv`)
+      link.style.visibility = 'hidden'
+      
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      
+      console.log('Report exported successfully')
+    } catch (error) {
+      console.error('Export error:', error)
+      alert('Failed to export report. Please try again.')
+    }
   }
 
   // Get status badge
@@ -362,7 +446,10 @@ export default function CompanyApplicationsPage() {
                 Review and manage all internship applications
               </p>
           </div>
-          <button className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center gap-2 text-sm sm:text-base w-full sm:w-auto justify-center">
+          <button 
+            onClick={exportToCSV}
+            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center gap-2 text-sm sm:text-base w-full sm:w-auto justify-center"
+          >
             <Download className="h-4 w-4" />
             Export Report
           </button>

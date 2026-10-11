@@ -380,24 +380,27 @@ export default function AdminUsersPage() {
                                   >
                                     <Eye className="h-4 w-4" />
                                   </Button>
-                                  <Button
-                                    onClick={() => {
-                                      setSelectedUser(user)
-                                      setNewRole(user.role)
-                                      setShowEditModal(true)
-                                    }}
-                                    variant="ghost"
-                                    size="sm"
-                                    title="Change Role"
-                                    className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
-                                  >
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    onClick={() => handleToggleStatus(user.id, user.status || 'active')}
-                                    variant="ghost"
-                                    size="sm"
-                                    title={user.status === 'suspended' ? 'Activate' : 'Suspend'}
+                                  {/* Only show edit/suspend/delete for non-admin users */}
+                                  {user.role !== 'admin' && (
+                                    <>
+                                      <Button
+                                        onClick={() => {
+                                          setSelectedUser(user)
+                                          setNewRole(user.role)
+                                          setShowEditModal(true)
+                                        }}
+                                        variant="ghost"
+                                        size="sm"
+                                        title="Change Role"
+                                        className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                                      >
+                                        <Edit className="h-4 w-4" />
+                                      </Button>
+                                      <Button
+                                        onClick={() => handleToggleStatus(user.id, user.status || 'active')}
+                                        variant="ghost"
+                                        size="sm"
+                                        title={user.status === 'suspended' ? 'Activate' : 'Suspend'}
                                     className={user.status === 'suspended' ? 
                                       "text-green-600 hover:text-green-700 hover:bg-green-50" : 
                                       "text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50"
@@ -417,6 +420,10 @@ export default function AdminUsersPage() {
                                   >
                                     <Key className="h-4 w-4" />
                                   </Button>
+                                  </>
+                                )}
+                                {/* Delete button - also only for non-admin users */}
+                                {user.role !== 'admin' && (
                                   <Button
                                     onClick={() => handleDeleteUser(user.id, user.email)}
                                     variant="ghost"
@@ -426,6 +433,7 @@ export default function AdminUsersPage() {
                                   >
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
+                                )}
                                 </div>
                               </td>
                             </tr>
@@ -465,31 +473,34 @@ export default function AdminUsersPage() {
                               <Eye className="h-3 w-3 mr-1" />
                               View
                             </Button>
-                            <Button
-                              onClick={() => {
-                                setSelectedUser(user)
-                                setNewRole(user.role)
-                                setShowEditModal(true)
-                              }}
-                              variant="outline"
-                              size="sm"
-                              className="text-purple-600 border-purple-300 text-xs"
-                            >
-                              <Edit className="h-3 w-3 mr-1" />
-                              Edit
-                            </Button>
-                            <Button
-                              onClick={() => handleToggleStatus(user.id, user.status || 'active')}
-                              variant="outline"
-                              size="sm"
-                              className={user.status === 'suspended' ? 
-                                "text-green-600 border-green-300 text-xs" : 
-                                "text-yellow-600 border-yellow-300 text-xs"
-                              }
-                            >
-                              {user.status === 'suspended' ? <CheckCircle className="h-3 w-3 mr-1" /> : <Ban className="h-3 w-3 mr-1" />}
-                              {user.status === 'suspended' ? 'Activate' : 'Suspend'}
-                            </Button>
+                            {/* Only show edit/suspend/delete buttons for non-admin users */}
+                            {user.role !== 'admin' && (
+                              <>
+                                <Button
+                                  onClick={() => {
+                                    setSelectedUser(user)
+                                    setNewRole(user.role)
+                                    setShowEditModal(true)
+                                  }}
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-purple-600 border-purple-300 text-xs"
+                                >
+                                  <Edit className="h-3 w-3 mr-1" />
+                                  Edit
+                                </Button>
+                                <Button
+                                  onClick={() => handleToggleStatus(user.id, user.status || 'active')}
+                                  variant="outline"
+                                  size="sm"
+                                  className={user.status === 'suspended' ? 
+                                    "text-green-600 border-green-300 text-xs" : 
+                                    "text-yellow-600 border-yellow-300 text-xs"
+                                  }
+                                >
+                                  {user.status === 'suspended' ? <CheckCircle className="h-3 w-3 mr-1" /> : <Ban className="h-3 w-3 mr-1" />}
+                                  {user.status === 'suspended' ? 'Activate' : 'Suspend'}
+                                </Button>
                             <Button
                               onClick={() => {
                                 setSelectedUser(user)
@@ -502,15 +513,20 @@ export default function AdminUsersPage() {
                               <Key className="h-3 w-3 mr-1" />
                               Reset
                             </Button>
-                            <Button
-                              onClick={() => handleDeleteUser(user.id, user.email)}
-                              variant="outline"
-                              size="sm"
-                              className="text-red-600 border-red-300 col-span-2 text-xs"
-                            >
-                              <Trash2 className="h-3 w-3 mr-1" />
-                              Delete
-                            </Button>
+                              </>
+                            )}
+                            {/* Delete button - also only for non-admin users */}
+                            {user.role !== 'admin' && (
+                              <Button
+                                onClick={() => handleDeleteUser(user.id, user.email)}
+                                variant="outline"
+                                size="sm"
+                                className="text-red-600 border-red-300 col-span-2 text-xs"
+                              >
+                                <Trash2 className="h-3 w-3 mr-1" />
+                                Delete
+                              </Button>
+                            )}
                           </div>
                         </div>
                       ))}

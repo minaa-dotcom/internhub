@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { UniversitySidebar } from "../../../../../components/sidebar/UniversitySideBar"
 import { Card, CardContent } from "@/components/ui/card"
@@ -51,7 +51,7 @@ interface AssignedStudent {
   feedback_date?: string
 }
 
-export default function AdvisorDashboardPage() {
+function AdvisorDashboardContent() {
   const searchParams = useSearchParams()
   const advisorId = searchParams.get('advisorId')
   const advisorName = searchParams.get('advisorName') || 'Advisor'
@@ -702,5 +702,17 @@ export default function AdvisorDashboardPage() {
         )}
       </main>
     </div>
+  )
+}
+
+export default function AdvisorDashboardPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen bg-blue-50 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+      </div>
+    }>
+      <AdvisorDashboardContent />
+    </Suspense>
   )
 }

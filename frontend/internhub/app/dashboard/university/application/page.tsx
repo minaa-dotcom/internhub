@@ -110,23 +110,39 @@ export default function ApplicationsPage() {
     setIsViewOpen(true);
   };
 
-  const downloadFile = async (url: string, name: string) => {
+  const downloadFile = async (url: string | null | undefined, name: string) => {
     try {
-      // Files are served statically, so we can directly open them
-      const link = document.createElement('a');
-      link.href = `${API_URL}${url}`;
-      link.download = name;
-      link.target = '_blank';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      if (!url) {
+        alert('File not available for download. The applicant may not have uploaded this document.')
+        return
+      }
+      
+      // Construct full URL
+      const fullUrl = url.startsWith('http') ? url : `${API_URL}${url}`
+      
+      console.log('Downloading file from:', fullUrl)
+      
+      // Create a temporary anchor element and trigger download
+      const link = document.createElement('a')
+      link.href = fullUrl
+      link.target = '_blank'
+      link.rel = 'noopener noreferrer'
+      
+      // Set download attribute with filename
+      link.download = name
+      
+      // Append to body, click, and remove
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      
     } catch (err) { 
       console.error("Download error:", err);
-      alert("Failed to download file. Please try again.");
+      alert("Failed to download file. Please check your connection and try again.");
     }
   };
 
-  const deleteApplication = async (appId: string, status: string) => {
+  const deleteApplication = async (appId: string | number, status: string) => {
     // Only allow deletion of pending, withdrawn, or rejected applications
     const allowedStatuses = ['pending', 'withdrawn', 'rejected'];
     if (!allowedStatuses.includes(status.toLowerCase())) {

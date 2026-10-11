@@ -55,3 +55,31 @@ coverage/
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
+
+# Documentation files (exclude from repository)
+*.md
+!README.md
+*.txt
+!requirements.txt
+!package.txt
+*.pdf
+*.docx
+*.doc
+
+# Batch and script files for local use
+*.bat
+!start-*.bat
+*.ps1
+
+# Test and diagnostic scripts
+backend/test*.js
+backend/view*.js
+backend/check*.js
+backend/diagnose*.js
+backend/verify*.js
+backend/create*.js
+backend/reset*.js
+backend/make*.js
+
+# SQL files
+*.sql

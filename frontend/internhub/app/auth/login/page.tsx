@@ -15,6 +15,27 @@ export default function LoginPage() {
   const [emailError, setEmailError] = useState("")
   const [passwordError, setPasswordError] = useState("")
 
+  // Resend verification email
+  const resendVerificationEmail = async (email: string) => {
+    try {
+      const res = await fetch(`${API_URL}/api/auth/resend-verification`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      })
+      const data = await res.json()
+      
+      if (res.ok) {
+        alert("Verification email sent! Please check your inbox and spam folder.")
+      } else {
+        alert(data.message || "Failed to resend verification email")
+      }
+    } catch (error) {
+      console.error("Error resending verification:", error)
+      alert("Failed to resend verification email. Please try again later.")
+    }
+  }
+
   // Email validation
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -93,12 +114,27 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password }),
       })
       const data = await res.json()
+      
+      // Check if email verification is required
+      if (res.status === 403 && data.requiresVerification) {
+        setError(data.message || "Please verify your email before logging in")
+        newTab?.close()
+        setIsLoading(false)
+        
+        // Show option to resend verification email
+        if (confirm("Would you like us to resend the verification email?")) {
+          await resendVerificationEmail(email)
+        }
+        return
+      }
+      
       if (!res.ok) {
         setError(data.message || "Login failed")
         newTab?.close()
         setIsLoading(false)
         return
       }
+      
       localStorage.setItem("token", data.token)
 
       const userRole = data.user?.role || "university"

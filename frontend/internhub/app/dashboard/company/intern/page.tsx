@@ -115,19 +115,38 @@ export default function AcceptedStudentsPage() {
     }
   }
 
-  const downloadFile = async (fileUrl: string, fileName: string) => {
+  const downloadFile = async (fileUrl: string | null | undefined, fileName: string) => {
+    if (!fileUrl) {
+      alert('File not available for download. The intern may not have uploaded this document.')
+      return
+    }
+    
     try {
+      // Construct full URL
+      const fullUrl = fileUrl.startsWith('http') ? fileUrl : `${API_URL}${fileUrl}`
+      
+      console.log('Downloading file from:', fullUrl)
+      
+      // Create a temporary anchor element and trigger download
       const link = document.createElement('a')
-      link.href = `${API_URL}${fileUrl}`
-      link.download = fileName
+      link.href = fullUrl
       link.target = '_blank'
+      link.rel = 'noopener noreferrer'
+      
+      // Set download attribute with filename
+      link.download = fileName
+      
+      // Append to body, click, and remove
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
+      
     } catch (error) {
       console.error('Download error:', error)
+      alert('Failed to download file. Please check your connection and try again.')
     }
   }
+
 
   const filteredStudents = students.filter(student =>
     student.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||

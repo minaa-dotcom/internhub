@@ -168,8 +168,34 @@ const deleteUser = async (req, res) => {
       });
     }
 
+    const targetUser = userCheck.rows[0];
+
+    // SECURITY: Prevent admins from deleting other admins
+    if (targetUser.role === 'admin') {
+      console.log(`[SECURITY BLOCK] ${req.user.email} attempted to delete admin user ${userId} at ${new Date().toISOString()}`);
+      return res.status(403).json({
+        success: false,
+        message: "Cannot delete admin users. Admin accounts are protected for system security."
+      });
+    }
+
+    // SECURITY: Prevent admin from deleting themselves
+    if (userId === req.user.id) {
+      console.log(`[SECURITY BLOCK] ${req.user.email} attempted to delete their own account at ${new Date().toISOString()}`);
+      return res.status(403).json({
+        success: false,
+        message: "Cannot delete your own account. Please contact another administrator."
+      });
+    }
+
+    // Log the deletion attempt
+    console.log(`[ADMIN ACTION] ${req.user.email} is deleting user ${targetUser.email} (${targetUser.role}) at ${new Date().toISOString()}`);
+
     // Delete user (cascade will handle related records)
     await db.query("DELETE FROM users WHERE id = $1", [userId]);
+
+    // Log successful deletion
+    console.log(`[ADMIN ACTION] User ${targetUser.email} successfully deleted by ${req.user.email}`);
 
     res.status(200).json({
       success: true,
@@ -199,20 +225,43 @@ const updateUserRole = async (req, res) => {
       });
     }
 
-    const result = await db.query(
-      "UPDATE users SET role = $1 WHERE id = $2 RETURNING *",
-      [role, userId]
-    );
-
-    if (result.rows.length === 0) {
+    // Check if target user exists and get their current role
+    const userCheck = await db.query("SELECT * FROM users WHERE id = $1", [userId]);
+    if (userCheck.rows.length === 0) {
       return res.status(404).json({
         success: false,
         message: "User not found"
       });
     }
 
+    const targetUser = userCheck.rows[0];
+
+    // SECURITY: Prevent changing admin roles
+    if (targetUser.role === 'admin' || role === 'admin') {
+      console.log(`[SECURITY BLOCK] ${req.user.email} attempted to change role involving admin for user ${userId} at ${new Date().toISOString()}`);
+      return res.status(403).json({
+        success: false,
+        message: "Cannot modify admin roles. Admin role assignments are protected for system security."
+      });
+    }
+
+    // SECURITY: Prevent changing own role
+    if (userId === req.user.id) {
+      console.log(`[SECURITY BLOCK] ${req.user.email} attempted to change their own role at ${new Date().toISOString()}`);
+      return res.status(403).json({
+        success: false,
+        message: "Cannot change your own role. Please contact another administrator."
+      });
+    }
+
+    // Perform the role update
+    const result = await db.query(
+      "UPDATE users SET role = $1 WHERE id = $2 RETURNING *",
+      [role, userId]
+    );
+
     // Log activity
-    console.log(`[ADMIN ACTION] ${req.user.email} changed role of user ${userId} to ${role} at ${new Date().toISOString()}`);
+    console.log(`[ADMIN ACTION] ${req.user.email} changed role of user ${targetUser.email} from ${targetUser.role} to ${role} at ${new Date().toISOString()}`);
 
     res.status(200).json({
       success: true,
@@ -243,12 +292,32 @@ const toggleUserStatus = async (req, res) => {
       });
     }
 
-    // Check if user exists
+    // Check if user exists and get their role
     const userCheck = await db.query("SELECT * FROM users WHERE id = $1", [userId]);
     if (userCheck.rows.length === 0) {
       return res.status(404).json({
         success: false,
         message: "User not found"
+      });
+    }
+
+    const targetUser = userCheck.rows[0];
+
+    // SECURITY: Prevent suspending admin accounts
+    if (targetUser.role === 'admin') {
+      console.log(`[SECURITY BLOCK] ${req.user.email} attempted to change status of admin user ${userId} at ${new Date().toISOString()}`);
+      return res.status(403).json({
+        success: false,
+        message: "Cannot modify admin account status. Admin accounts are protected for system security."
+      });
+    }
+
+    // SECURITY: Prevent changing own status
+    if (userId === req.user.id) {
+      console.log(`[SECURITY BLOCK] ${req.user.email} attempted to change their own status at ${new Date().toISOString()}`);
+      return res.status(403).json({
+        success: false,
+        message: "Cannot change your own account status."
       });
     }
 
@@ -259,7 +328,7 @@ const toggleUserStatus = async (req, res) => {
     );
 
     // Log activity
-    console.log(`[ADMIN ACTION] ${req.user.email} ${status === 'suspended' ? 'suspended' : 'activated'} user ${userId} at ${new Date().toISOString()}`);
+    console.log(`[ADMIN ACTION] ${req.user.email} ${status === 'suspended' ? 'suspended' : 'activated'} user ${targetUser.email} at ${new Date().toISOString()}`);
 
     res.status(200).json({
       success: true,

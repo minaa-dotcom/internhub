@@ -154,7 +154,8 @@ export default function AdvisorsManagementPage() {
       setAdvisors(data.advisors || [])
     } catch (error) {
       console.error('Error fetching advisors:', error)
-      alert(`Failed to load advisors: ${error.message || 'Please try again'}`)
+      const errorMessage = error instanceof Error ? error.message : 'Please try again'
+      alert(`Failed to load advisors: ${errorMessage}`)
     }
   }
 
@@ -233,11 +234,12 @@ export default function AdvisorsManagementPage() {
         is_assigned: assignedIds.includes(app.id)
       }))
       
-      console.log(`Processed ${students.length} students, ${students.filter(s => !s.is_assigned).length} unassigned`)
+      console.log(`Processed ${students.length} students, ${students.filter((s: any) => !s.is_assigned).length} unassigned`)
       setAcceptedStudents(students)
     } catch (error) {
       console.error('Error fetching students:', error)
-      alert(`Failed to load students: ${error.message || 'Please try again'}`)
+      const errorMessage = error instanceof Error ? error.message : 'Please try again'
+      alert(`Failed to load students: ${errorMessage}`)
     } finally {
       setLoading(false)
     }
